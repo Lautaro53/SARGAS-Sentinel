@@ -1,0 +1,28 @@
+# Credenciales y configuración privada
+.env
+.env.*
+!.env.example
+*password*.txt
+*secret*.txt
+!go.mod
+!go.sum
+
+# Binarios y compilaciones
+*.exe
+*.test
+*.out
+/dist/
+/build/
+/cmd/sentinel/web/dist/
+
+# Dependencias
+node_modules/
+
+# Archivos temporales
+*.log
+*.tmp
+*.bak
+
+# Editores
+.vscode/
+.idea/

@@ -1,0 +1,71 @@
+name: sargas-db-lab
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: sargas_sentinel
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+
+    secrets:
+      - postgres_password
+      - sentinel_app_password
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d sargas_sentinel
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  sentinel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        frontend: ../sargas-sentinel-web
+
+    image: sargas-sentinel:local
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DATABASE_URL: "postgres://sentinel_app@postgres:5432/sargas_sentinel?sslmode=disable"
+      SARGAS_HTTP_ADDR: "0.0.0.0:8080"
+
+    secrets:
+      - sentinel_app_password
+
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        export PGPASSWORD="$$(cat /run/secrets/sentinel_app_password)"
+        exec /app/sentinel
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+
+secrets:
+  postgres_password:
+    file: ${SARGAS_DOCKER_SECRETS:?Falta directorio de secretos}/postgres_password.txt
+
+  sentinel_app_password:
+    file: ${SARGAS_DOCKER_SECRETS:?Falta directorio de secretos}/sentinel_app_password.txt
+
+volumes:
+  postgres_data:

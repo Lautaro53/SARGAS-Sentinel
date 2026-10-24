@@ -1,0 +1,16 @@
+
+.git
+.gitignore
+.vscode
+*.exe
+*.dump
+*.log
+*.zip
+.env
+.env.*
+node_modules
+dist
+cmd/sentinel/web/dist
+SARGAS-privado
+docker-secrets
+race-link.log

@@ -1,0 +1,15 @@
+# Normalizar archivos de código entre Windows y Linux.
+* text=auto
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+*.yaml text eol=lf
+*.svelte text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.svg text eol=lf

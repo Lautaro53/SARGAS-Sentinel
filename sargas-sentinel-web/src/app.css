@@ -1,0 +1,34 @@
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+
+  --color-background: #07111f;
+  --color-sidebar: #0b1728;
+  --color-surface: #101d31;
+  --color-border: #22324a;
+
+  --color-primary: #2d7ff9;
+  --color-text: #e8f0fa;
+  --color-muted: #9aaac0;
+
+
+  --color-up: #23c483;
+  --color-down: #f05d6c;
+  --color-unknown: #8a97ab;
+
+
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button {
+  font: inherit;
+}

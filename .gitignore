@@ -1,0 +1,62 @@
+# SARGAS Sentinel - reglas para el monorepositorio (raiz SARGAS/)
+# Documentacion y material personal
+/Extras/
+
+# Dependencias y productos de compilacion
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/build/
+**/coverage/
+**/.svelte-kit/
+**/.vite/
+**/vendor/
+
+# Ejecutables y artefactos de desarrollo
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+*.profraw
+*.coverprofile
+*.log
+*.tmp
+*.bak
+*.bak-*
+*.dump
+*.zip
+*.7z
+*.tar.gz
+
+# Secretos y configuracion privada
+**/.env
+**/.env.*
+!**/.env.example
+**/docker-secrets/
+**/SARGAS-privado/
+**/postgres_password.txt
+**/sentinel_app_password.txt
+**/*.credential.xml
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+
+# Editor y sistema operativo
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/Thumbs.db
+**/desktop.ini
+
+# Apuntes de correcciones antiguas
+/sargas-sentinel-web/SARGAS_5_4_INSTRUCCIONES.md
+
+# Recursos de plantilla sin referencias en el frontend v1
+/sargas-sentinel-web/src/assets/hero.png
+/sargas-sentinel-web/src/assets/svelte.svg
+/sargas-sentinel-web/src/assets/vite.svg
+/sargas-sentinel-web/src/lib/Counter.svelte
