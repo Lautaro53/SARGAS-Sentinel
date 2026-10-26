@@ -153,11 +153,3 @@ PostgreSQL utiliza un volumen persistente de Docker. La inicialización del volu
 Las contraseñas se generan fuera del repositorio, bajo `SARGAS-privado/docker-secrets` en el perfil de Windows. **Guardar una copia segura tanto de las credenciales como de los respaldos de la base.** Perder las credenciales no debe provocar la creación de unas nuevas sobre un volumen existente.
 
 Por defecto la aplicación se publica solo en `127.0.0.1:8080`; PostgreSQL no publica un puerto en el host. No hay autenticación ni HTTPS de administración en la v1.0. No exponer esta instancia mediante proxies públicos, apertura de puertos o túneles sin implementar controles de seguridad adicionales.
-
-## Limitaciones conocidas
-
-- El tipo de comprobación disponible es HTTP/HTTPS; no hay comprobación TCP nativa.
-- No existen cuentas de usuario, sesiones o permisos administrativos por usuario.
-- No se incluyen notificaciones externas ni monitoreo distribuido.
-- El archivado preserva los registros, pero la interfaz no ofrece desarchivado.
-- La validación final de seguridad, integración y distribución debe repetirse con el código definitivo antes de etiquetar v1.0.
