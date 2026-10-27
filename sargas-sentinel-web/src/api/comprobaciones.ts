@@ -50,11 +50,16 @@ function esComprobacion(
 
 
 export async function obtenerComprobaciones(
-  servicioId: number
+  servicioId: number,
+  limite: number = 20
 ): Promise<Comprobacion[]> {
 
+  if (!Number.isInteger(limite) || limite < 1 || limite > 100) {
+    throw new Error('El límite debe estar entre 1 y 100')
+  }
+
   const respuesta = await fetch(
-    `/api/servicios/${servicioId}/comprobaciones?limite=20&offset=0`
+    `/api/servicios/${servicioId}/comprobaciones?limite=${limite}&offset=0`
   )
 
   if (!respuesta.ok) {

@@ -41,16 +41,28 @@
 
     .up {
         color: var(--color-up);
-        background: #14362d;
+        background: color-mix(
+            in srgb,
+            var(--color-up) 12%,
+            var(--color-surface)
+        );
     }
 
     .down {
         color: var(--color-down);
-        background: #40212c;
+        background: color-mix(
+            in srgb,
+            var(--color-down) 12%,
+            var(--color-surface)
+        );
     }
 
     .unknown {
         color: var(--color-unknown);
-        background: #293446;
+        background: color-mix(
+            in srgb,
+            var(--color-unknown) 12%,
+            var(--color-surface)
+        );
     }
 </style>

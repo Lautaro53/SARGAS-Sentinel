@@ -9,6 +9,7 @@
   import { obtenerServicios } from "./api/servicios";
   import type { Pagina } from "./types/navegacion";
   import type { Servicio } from "./types/servicio";
+  import Footer from "./components/Footer.svelte";
 
   type Ruta =
     | { pagina: Pagina; detalleId: null }
@@ -18,11 +19,13 @@
     // La SPA acepta /servicios/ e /incidentes/ igual que el router Go.
     if (path.length > 1) path = path.replace(/\/+$/, "");
     if (path === "/servicios") return { pagina: "servicios", detalleId: null };
-    if (path === "/incidentes") return { pagina: "incidentes", detalleId: null };
+    if (path === "/incidentes")
+      return { pagina: "incidentes", detalleId: null };
     const resultado = /^\/servicios\/([1-9]\d*)\/?$/.exec(path);
     if (resultado) {
       const id = Number(resultado[1]);
-      if (Number.isSafeInteger(id)) return { pagina: "servicios", detalleId: id };
+      if (Number.isSafeInteger(id))
+        return { pagina: "servicios", detalleId: id };
     }
     return { pagina: "dashboard", detalleId: null };
   }
@@ -62,14 +65,18 @@
       else errorDetalle = "El servicio no existe o está archivado.";
     } catch (error) {
       if (version !== revision) return;
-      errorDetalle = error instanceof Error ? error.message : "No se pudo cargar el servicio.";
+      errorDetalle =
+        error instanceof Error
+          ? error.message
+          : "No se pudo cargar el servicio.";
     } finally {
       if (version === revision) cargandoDetalle = false;
     }
   }
 
   function cambiarRuta(path: string) {
-    if (window.location.pathname !== path) window.history.pushState(null, "", path);
+    if (window.location.pathname !== path)
+      window.history.pushState(null, "", path);
     void sincronizarRuta();
   }
 
@@ -111,10 +118,15 @@
             <p role="status">Cargando servicio...</p>
           {:else if errorDetalle}
             <p role="alert">{errorDetalle}</p>
-            <button type="button" onclick={() => navegar("servicios")}>← Volver a servicios</button>
+            <button type="button" onclick={() => navegar("servicios")}
+              >← Volver a servicios</button
+            >
           {:else if servicioSeleccionado}
             {#key ruta.detalleId}
-              <DetalleServicio servicio={servicioSeleccionado} onVolver={() => navegar("servicios")} />
+              <DetalleServicio
+                servicio={servicioSeleccionado}
+                onVolver={() => navegar("servicios")}
+              />
             {/key}
           {/if}
         {:else}
@@ -124,12 +136,52 @@
         <Incidentes />
       {/if}
     </main>
+    <div class="footer-container">
+      <Footer />
+    </div>
   </div>
 </div>
 
 <style>
-  .app-shell { display: flex; min-height: 100vh; }
-  .workspace { flex: 1; min-width: 0; }
-  .page-content { max-width: 1400px; margin: 0 auto; padding: 42px 32px; }
-  @media (max-width: 760px) { .page-content { padding: 28px 16px; } }
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .page-content {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 32px 40px;
+    flex: 1;
+  }
+
+  .footer-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  @media (max-width: 760px) {
+    .page-content {
+      padding: 24px 16px 32px;
+    }
+
+    .footer-container {
+      padding: 0 16px;
+    }
+  }
+  
+  @media (max-width: 760px) {
+    .page-content {
+      padding: 28px 16px;
+    }
+  }
 </style>

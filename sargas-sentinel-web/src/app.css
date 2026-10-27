@@ -1,34 +1,36 @@
-:root {
-  font-family: "Segoe UI", Arial, sans-serif;
+  @import './styles/themes/nebula.css';
 
-  --color-background: #07111f;
-  --color-sidebar: #0b1728;
-  --color-surface: #101d31;
-  --color-border: #22324a;
+  :root {
+    font-family: "Segoe UI", Arial, sans-serif;
 
-  --color-primary: #2d7ff9;
-  --color-text: #e8f0fa;
-  --color-muted: #9aaac0;
+    --color-background: #07111f;
+    --color-sidebar: #0b1728;
+    --color-surface: #101d31;
+    --color-border: #22324a;
 
-
-  --color-up: #23c483;
-  --color-down: #f05d6c;
-  --color-unknown: #8a97ab;
+    --color-primary: #2d7ff9;
+    --color-text: #e8f0fa;
+    --color-muted: #9aaac0;
 
 
-  color: var(--color-text);
-  background: var(--color-background);
-}
+    --color-up: #23c483;
+    --color-down: #f05d6c;
+    --color-unknown: #8a97ab;
 
-* {
-  box-sizing: border-box;
-}
 
-body {
-  margin: 0;
-  min-width: 320px;
-}
+    color: var(--color-text);
+    background: var(--color-background);
+  }
 
-button {
-  font: inherit;
-}
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+  }
+
+  button {
+    font: inherit;
+  }

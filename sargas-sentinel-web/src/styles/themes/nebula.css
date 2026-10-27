@@ -1,0 +1,36 @@
+:root[data-theme="nebula"] {
+
+  color-scheme: dark;
+
+  /* Fondos y superficies */
+  --color-background: #080F1E;
+  --color-sidebar: #0C1729;
+  --color-surface: #08162b;
+  --color-surface-elevated: #1B2D46;
+  --color-border: #273C55;
+
+  /* Identidad SARGAS */
+  --color-primary: #38BDF8;
+  --color-primary-hover: #7DD3FC;
+  --color-on-primary: #080F1E;
+
+  /* Tipografía */
+  --color-text: #F1F6FF;
+  --color-muted: #94A8C5;
+
+  /* Estados de monitoreo */
+  --color-up: #34D399;
+  --color-down: #FB7185;
+  --color-unknown: #A7B7D0;
+  --color-warning: #FBBF24;
+
+  /* Interacciones */
+  --color-focus: #38BDF8;
+
+  /* Efectos */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.12);
+
+  /* Bordes redondeados */
+  --radius-card: 12px;
+  --radius-control: 8px;
+} 

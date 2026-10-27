@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">SARGAS Sentinel</title>
+  <desc id="desc">Estrella luminosa rodeada por una órbita segmentada que representa el monitoreo de servicios.</desc>
+  <defs>
+    <linearGradient id="star" x1="33" y1="32" x2="64" y2="65" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6FCFF"/>
+      <stop offset="0.55" stop-color="#BEEBFF"/>
+      <stop offset="1" stop-color="#38A7EF"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="18" y1="18" x2="78" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8CDDFB"/>
+      <stop offset="1" stop-color="#347FD5"/>
+    </linearGradient>
+  </defs>
+  <!-- Fundo compatible con el sidebar oscuro de SARGAS -->
+  <rect x="4" y="4" width="88" height="88" rx="24" fill="#112238"/>
+  <rect x="4.75" y="4.75" width="86.5" height="86.5" rx="23.25" fill="none" stroke="#2A4560" stroke-width="1.5"/>
+  <!-- Estrellas distantes, deliberadamente sutiles -->
+  <circle cx="23" cy="25" r="1.3" fill="#7EBAD9" opacity=".62"/>
+  <circle cx="71" cy="70" r="1.3" fill="#80B7D4" opacity=".55"/>
+  <!-- Orbita fragmentada: supervisión continua, sin sugerir un planeta -->
+  <g fill="none" stroke="url(#orbit)" stroke-width="3.2" stroke-linecap="round">
+    <path d="M24.5 31.5A29 29 0 0 1 65.5 24"/>
+    <path d="M75 37.5A29 29 0 0 1 66 71"/>
+    <path d="M56.5 76A29 29 0 0 1 20.5 59"/>
+  </g>
+  <!-- Referencias orbitales -->
+  <circle cx="65.5" cy="24" r="3.9" fill="#52D6F5"/>
+  <circle cx="20.5" cy="59" r="2.5" fill="#BEEBFF"/>
+  <!-- Sargas, representada como estrella de cuatro puntas -->
+  <path d="M48 28.5C50.4 40.1 55.9 45.6 67.5 48C55.9 50.4 50.4 55.9 48 67.5C45.6 55.9 40.1 50.4 28.5 48C40.1 45.6 45.6 40.1 48 28.5Z" fill="url(#star)"/>
+  <circle cx="48" cy="48" r="3" fill="#FFFFFF"/>
+</svg>
