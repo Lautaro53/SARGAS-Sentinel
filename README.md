@@ -57,48 +57,56 @@ SARGAS/
 
 El directorio personal `Extras/`, si existe, **no se publica**: se excluye mediante `.gitignore`.
 
-## Inicio rápido: Windows y Docker
+## Instalacion limpia: Windows + Docker (un comando)
 
-**Requisitos:** Docker Desktop con motor Linux iniciado, Docker Compose compatible con `additional_contexts` y PowerShell. No es necesario instalar Go, Node.js ni PostgreSQL para ejecutar la instalación Docker.
+**Requisitos:** Windows 10/11, Docker Desktop iniciado en modo **contenedores Linux**, Docker Compose **v2.17 o posterior**, Buildx y conexion a Internet la primera vez. **No hay que instalar Node.js, npm, Go o PostgreSQL en Windows.** Docker los utiliza durante la compilacion. <https://docs.docker.com/reference/compose-file/build/#additional_contexts>
 
-1. Descargar o clonar este repositorio conservando ambas carpetas.
-2. Iniciar Docker Desktop.
-3. Desde PowerShell, entrar al backend y ejecutar:
+1. Descargar el ZIP del repositorio o clonar el proyecto. Extraerlo por completo; mantener `SARGAS-sentinel/` y `sargas-sentinel-web/` como carpetas hermanas.
+2. Abrir Docker Desktop y esperar a que el motor este funcionando.
+3. Abrir PowerShell **normal (sin Administrador)** en la carpeta `SARGAS/` y ejecutar:
 
    ```powershell
-   cd .\SARGAS-sentinel
-   .\scripts\instalar-sentinel.ps1
+   .\instalar.cmd
    ```
 
-4. Abrir **http://127.0.0.1:8080/**.
+4. Al ver "SARGAS Sentinel instalado y disponible", abrir **http://127.0.0.1:8080/**.
 
-El instalador verifica Docker, crea credenciales privadas si es una instalación nueva, compila las imágenes, inicia la base de datos y la aplicación, y comprueba que `/api/servicios` devuelve HTTP 200. Una instalación sin servicios muestra un Dashboard vacío: es el resultado esperado.
+El `.cmd` invoca el instalador PowerShell con una politica de ejecucion valida solo para **ese proceso**; no modifica configuraciones permanentes de Windows. En equipos administrados por una organizacion, una politica de grupo puede bloquear incluso esa invocacion; debe respetarse esa restriccion, no cambiar politicas de forma global. No ejecutes scripts de origen desconocido.
 
-Si Windows bloquea la ejecución de un script descargado, revisar su procedencia y, si es de confianza, usar `Unblock-File` para ese archivo. No es necesario cambiar la política de ejecución del sistema de forma permanente.
+**No ejecutar como Administrador por defecto.** Si Docker Desktop no permite acceso al motor, resolver primero los permisos y el grupo `docker-users` para la cuenta habitual (puede requerir asistencia de un administrador y un nuevo inicio de sesion). Ejecutar el instalador con otra cuenta podria crear secretos en otro perfil y complicar reinstalaciones.
 
-**Nota:** el instalador está diseñado para Windows. En otros sistemas operativos debe prepararse el directorio de secretos requerido por `compose.yaml` antes de utilizar Docker Compose; no se distribuye todavía un instalador multiplataforma.
+El instalador valida Docker, conserva las credenciales anteriores o genera nuevas **solo en una instalacion sin base existente**, construye Node/Svelte y Go dentro de Docker, inicia PostgreSQL y comprueba HTTP 200 tanto en la API como en el inicio web. No modifica la politica de PowerShell, ni borra volumenes, ni solicita npm local.
 
-## Operación diaria
+**IMPORTANTE:** la primera compilacion necesita Internet para descargar las imagenes Docker y dependencias npm/Go. `npm ci` ocurre *dentro del contenedor de compilacion*, no en la maquina del usuario. Si falla por una descarga, comprobar conexion, proxy y certificados de Docker antes de modificar archivos.
 
-Los comandos siguientes se ejecutan desde `SARGAS-sentinel/`. Si se opera con Compose directamente en una terminal nueva, primero hay que definir la variable `SARGAS_DOCKER_SECRETS` con la carpeta privada de secretos; el instalador la configura automáticamente para su propia ejecución.
+### Comandos de operacion
 
-| Operación | Comando |
+Ejecutar desde la carpeta `SARGAS/`:
+
+| Operacion | Comando |
 |---|---|
-| Comprobar estado | `.\scripts\administrar-docker.ps1 estado` |
-| Ver registros de la aplicación | `.\scripts\administrar-docker.ps1 logs` |
-| Detener los servicios | `.\scripts\administrar-docker.ps1 detener` |
-| Iniciar o actualizar | `.\scripts\instalar-sentinel.ps1` |
+| Instalar, iniciar o reconstruir | `.\instalar.cmd` |
+| Estado de contenedores | `.\administrar.cmd estado` |
+| Ultimos logs de la aplicacion | `.\administrar.cmd logs` |
+| Detener los contenedores | `.\administrar.cmd detener` |
 | Comprobar la API | `curl.exe -i http://127.0.0.1:8080/api/servicios` |
 
-Para las operaciones de `docker compose` directas puede definirse en PowerShell:
+Las utilidades `.cmd` tambien evitan ejecutar directamente archivos `.ps1` en una sesion con restricciones habituales. Los scripts nativos de desarrollo siguen en `SARGAS-sentinel/scripts/` y **no forman parte de la instalacion de usuario**.
 
-```powershell
-$env:SARGAS_DOCKER_SECRETS = (
-    Join-Path $env:USERPROFILE 'SARGAS-privado\docker-secrets'
-).Replace('\', '/')
-```
+### Datos y reinstalaciones
 
-No usar `docker compose down -v` en una instalación que deba conservar sus datos: el parámetro `-v` elimina los volúmenes del proyecto.
+Las contrasenas se guardan **fuera del repositorio** en `%USERPROFILE%\SARGAS-privado\docker-secrets`; PostgreSQL mantiene sus datos en el volumen Docker `sargas-db-lab_postgres_data`. Antes de cambiar de equipo o reinstalar Docker, guardar una copia segura de **ambos secretos y los respaldos de la base de datos**. Si existe el volumen pero faltan las contrasenas, el instalador **se detiene**: no las reemplaza.
+
+Nunca uses `docker compose down -v` para una instalacion con datos que quieras conservar. El servicio de administracion HTTP escucha unicamente en `127.0.0.1:8080` y **no incluye autenticacion**; no publicarlo en Internet.
+
+### Solucion de problemas
+
+- **`docker` no reconocido:** instalar Docker Desktop y reabrir la terminal.
+- **No puede conectarse al motor:** iniciar Docker Desktop; seleccionar contenedores Linux; verificar permisos Docker de tu usuario.
+- **Compose antiguo o sin Buildx:** actualizar Docker Desktop. La compilacion requiere contextos adicionales para frontend y backend.
+- **Error de `npm ci` / `go mod download`:** comprobar Internet, proxy, DNS y acceso a registros desde Docker; no instalar npm ni Go en Windows.
+- **Puerto 8080 ocupado:** cerrar la aplicacion que lo utiliza; este instalador no cambia la exposicion local.
+- **Faltan secretos y ya existe una base:** recuperar los secretos originales y no eliminar el volumen.
 
 ## API REST
 
