@@ -36,7 +36,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 	}
 	defer pool.Close()
 
-	// Proteger la base de produccion.
 	var base string
 	if err := pool.QueryRow(ctx,
 		"SELECT current_database()",
@@ -61,7 +60,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Eliminar exclusivamente el servicio creado.
 	defer func() {
 		cleanupCtx, fin := context.WithTimeout(
 			context.Background(), 5*time.Second,
@@ -79,7 +77,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 	const total = 32
 	inicios := make(chan string, total+1)
 
-	// Trabajador simulado, sin peticiones externas.
 	manager := monitor.NewManager(
 		context.Background(),
 		func(ctx context.Context, s service.Servicio) {
@@ -93,7 +90,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Esperar el primer trabajador.
 	select {
 	case <-inicios:
 	case <-time.After(3 * time.Second):
@@ -106,7 +102,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 	salida := make(chan struct{})
 	errores := make(chan string, total)
 
-	// Ejecutar 32 ediciones simultaneas.
 	for i := 0; i < total; i++ {
 		wg.Add(1)
 
@@ -149,9 +144,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 		return
 	}
 
-	// Cada edicion debio iniciar un trabajador.
-	// El ultimo inicio representa la configuracion
-	// que quedo aplicada en el Manager.
 	var ultimoNombre string
 
 	for i := 0; i < total; i++ {
@@ -162,7 +154,6 @@ func TestAPIEdicionesConcurrentesIntegracion(t *testing.T) {
 		}
 	}
 
-	// Consultar la configuracion final en PostgreSQL.
 	var nombreDB string
 	err = pool.QueryRow(ctx,
 		"SELECT nombre FROM servicios WHERE id = $1",

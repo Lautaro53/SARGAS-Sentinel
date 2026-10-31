@@ -130,8 +130,13 @@ func ejecutar() error {
 	}()
 
 	fmt.Println("SARGAS Sentinel iniciado")
-	fmt.Println("Web: http://127.0.0.1:8080/")
-	fmt.Println("API: http://127.0.0.1:8080/api/servicios")
+	puertoPublico := strings.TrimSpace(os.Getenv("SARGAS_PUBLIC_PORT"))
+	if puertoPublico == "" {
+		puertoPublico = "8080"
+	}
+
+	fmt.Printf("Web: http://127.0.0.1:%s/\n", puertoPublico)
+	fmt.Printf("API: http://127.0.0.1:%s/api/servicios\n", puertoPublico)
 	fmt.Println("Presiona Ctrl+C para detener")
 
 	// Esperar una señal de apagado o un fallo real del servidor.
@@ -165,14 +170,24 @@ func ejecutar() error {
 }
 
 func protegerHostLocal(siguiente http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch strings.ToLower(r.Host) {
-		case "127.0.0.1:8080", "localhost:8080":
-			siguiente.ServeHTTP(w, r)
+	puerto := strings.TrimSpace(os.Getenv("SARGAS_PUBLIC_PORT"))
 
-		default:
+	if puerto == "" {
+		puerto = "8080"
+	}
+
+	hostsPermitidos := map[string]bool{
+		net.JoinHostPort("127.0.0.1", puerto): true,
+		net.JoinHostPort("localhost", puerto): true,
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !hostsPermitidos[strings.ToLower(r.Host)] {
 			http.Error(w, "Host no permitido", http.StatusForbidden)
+			return
 		}
+
+		siguiente.ServeHTTP(w, r)
 	})
 }
 

@@ -39,7 +39,6 @@ func (r *ConsultaRepository) ListarIncidentes(
 	offset int32,
 ) ([]IncidenteRegistro, error) {
 
-	// Verificar que el servicio exista.
 	_, err := r.ObtenerEstado(ctx, servicioID)
 	if err != nil {
 		return nil, fmt.Errorf(

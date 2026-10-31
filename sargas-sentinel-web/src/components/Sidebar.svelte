@@ -32,7 +32,7 @@
   <div class="brand">
     <img
       class="brand-logo"
-      src="/sargas-logo.svg"
+      src="/s3.jpg"
       alt="SARGAS Sentinel"
       width="40"
       height="40"
@@ -87,7 +87,7 @@
         <span>Monitor HTTP</span>
       </div>
 
-      <span class="version-badge">v1.1</span>
+      <span class="version-badge">v1.1.5</span>
     </div>
   </div>
 </aside>

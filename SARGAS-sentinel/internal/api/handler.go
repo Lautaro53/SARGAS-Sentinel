@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,6 +59,19 @@ type incidenteResponse struct {
 }
 
 func protegerOrigenAdministrativo(siguiente http.Handler) http.Handler {
+	puerto := strings.TrimSpace(os.Getenv("SARGAS_PUBLIC_PORT"))
+
+	if puerto == "" {
+		puerto = "8080"
+	}
+
+	origenesPermitidos := map[string]bool{
+		"http://localhost:5173":      true,
+		"http://127.0.0.1:5173":      true,
+		"http://localhost:" + puerto: true,
+		"http://127.0.0.1:" + puerto: true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost ||
 			r.Method == http.MethodPut ||
@@ -65,18 +79,9 @@ func protegerOrigenAdministrativo(siguiente http.Handler) http.Handler {
 
 			origen := r.Header.Get("Origin")
 
-			if origen != "" {
-				switch origen {
-				case "http://localhost:5173",
-					"http://127.0.0.1:5173",
-					"http://localhost:8080",
-					"http://127.0.0.1:8080":
-					// Origen local permitido.
-
-				default:
-					http.Error(w, "Origen no permitido", http.StatusForbidden)
-					return
-				}
+			if origen != "" && !origenesPermitidos[origen] {
+				http.Error(w, "Origen no permitido", http.StatusForbidden)
+				return
 			}
 		}
 

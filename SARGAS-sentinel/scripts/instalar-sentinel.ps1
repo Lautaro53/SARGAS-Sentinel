@@ -30,6 +30,99 @@ function Nueva-Clave {
     }
 }
 
+function Test-PuertoDisponible {
+    param(
+        [ValidateRange(1, 65535)]
+        [int]$Puerto
+    )
+
+    $listener = [System.Net.Sockets.TcpListener]::new(
+        [System.Net.IPAddress]::Loopback,
+        $Puerto
+    )
+
+    try {
+        $listener.Server.ExclusiveAddressUse = $true
+        $listener.Start()
+        return $true
+    }
+    catch [System.Net.Sockets.SocketException] {
+        return $false
+    }
+    finally {
+        $listener.Stop()
+    }
+}
+
+function Buscar-PuertoDisponible {
+    foreach ($puerto in 8080..8090) {
+        if (Test-PuertoDisponible -Puerto $puerto) {
+            return $puerto
+        }
+    }
+
+    throw 'No hay puertos disponibles entre 8080 y 8090.'
+}
+
+function Obtener-InstalacionSentinel {
+    $ids = @(
+        & docker ps -aq `
+            --filter 'label=com.docker.compose.project=sargas-db-lab' `
+            --filter 'label=com.docker.compose.service=sentinel' `
+            --filter 'label=com.docker.compose.oneoff=False'
+    )
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'No se pudieron consultar los contenedores.'
+    }
+
+    if ($ids.Count -eq 0) {
+        return $null
+    }
+
+    if ($ids.Count -ne 1) {
+        throw 'Se encontraron varios contenedores Sentinel. Revisar antes de continuar.'
+    }
+
+    $json = & docker inspect --format '{{json .HostConfig.PortBindings}}' $ids[0]
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'No se pudo inspeccionar el contenedor Sentinel.'
+    }
+
+    $configuracion = $json | ConvertFrom-Json
+    $enlaces = @($configuracion.'8080/tcp')
+
+    if ($enlaces.Count -ne 1 -or
+        $null -eq $enlaces[0] -or
+        $enlaces[0].HostIp -ne '127.0.0.1') {
+        throw 'La publicación de puertos existente requiere revisión manual.'
+    }
+
+    $puerto = 0
+    if (-not [int]::TryParse(
+        [string]$enlaces[0].HostPort,
+        [ref]$puerto
+    )) {
+        throw 'El puerto del contenedor no es válido.'
+    }
+
+    if ($puerto -lt 8080 -or $puerto -gt 8090) {
+        throw 'El puerto existente está fuera del rango automático 8080-8090.'
+    }
+
+    $estado = & docker inspect --format '{{.State.Running}}' $ids[0]
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'No se pudo consultar el estado de Sentinel.'
+    }
+
+    return [PSCustomObject]@{
+        Puerto = $puerto
+        Ejecutando = ($estado.Trim() -eq 'true')
+    }
+}
+
 try {
     Write-Host ''
     Write-Host 'SARGAS Sentinel - Instalacion limpia con Docker' -ForegroundColor Cyan
@@ -128,6 +221,46 @@ try {
 
     $env:SARGAS_DOCKER_SECRETS = $privado.Replace('\', '/')
 
+    $archivoPuerto = Join-Path (
+    Split-Path -Parent $privado
+) 'puerto-http.txt'
+
+$instalacion = Obtener-InstalacionSentinel
+$puertoPreferido = $null
+$yaEjecutando = $false
+
+if ($null -ne $instalacion) {
+    $puertoPreferido = $instalacion.Puerto
+    $yaEjecutando = $instalacion.Ejecutando
+}
+elseif (Test-Path -LiteralPath $archivoPuerto) {
+    $valor = (Get-Content -LiteralPath $archivoPuerto -Raw).Trim()
+
+    $puertoLeido = 0
+
+    if (-not [int]::TryParse($valor, [ref]$puertoLeido) -or
+        $puertoLeido -lt 8080 -or
+        $puertoLeido -gt 8090) {
+        throw 'El archivo de configuración del puerto es inválido.'
+    }
+
+    $puertoPreferido = $puertoLeido
+}
+
+if ($null -ne $puertoPreferido -and
+    ($yaEjecutando -or
+        (Test-PuertoDisponible -Puerto $puertoPreferido))) {
+
+    $puertoSeleccionado = $puertoPreferido
+}
+else {
+    $puertoSeleccionado = Buscar-PuertoDisponible
+}
+
+$env:SARGAS_HOST_PORT = [string]$puertoSeleccionado
+
+Write-Host "Puerto HTTP seleccionado: $puertoSeleccionado"
+
     Push-Location $backend
     try {
         Write-Host '[3/5] Validando Compose...'
@@ -142,8 +275,8 @@ try {
         }
 
         Write-Host '[5/5] Verificando API y pagina web...'
-        $api = 'http://127.0.0.1:8080/api/servicios'
-        $web = 'http://127.0.0.1:8080/'
+        $api = "http://127.0.0.1:$puertoSeleccionado/api/servicios"
+        $web = "http://127.0.0.1:$puertoSeleccionado/"
         $disponible = $false
         for ($intento = 1; $intento -le 30; $intento++) {
             try {
@@ -166,6 +299,34 @@ try {
             throw 'La API o la web no superaron la verificacion.'
         }
         Write-Host ''
+                # Guardar el puerto solo despues de verificar la instalacion.
+        $directorioConfiguracion = Split-Path -Parent $archivoPuerto
+
+        New-Item -ItemType Directory `
+            -Path $directorioConfiguracion `
+            -Force | Out-Null
+
+        $archivoTemporalPuerto = "$archivoPuerto.tmp"
+
+        try {
+            $utf8SinBOM = [System.Text.UTF8Encoding]::new($false)
+
+            [System.IO.File]::WriteAllText(
+                $archivoTemporalPuerto,
+                [string]$puertoSeleccionado,
+                $utf8SinBOM
+            )
+
+            Move-Item `
+                -LiteralPath $archivoTemporalPuerto `
+                -Destination $archivoPuerto `
+                -Force
+        }
+        finally {
+            if (Test-Path -LiteralPath $archivoTemporalPuerto) {
+                Remove-Item -LiteralPath $archivoTemporalPuerto -Force
+            }
+        }
         Write-Host 'SARGAS Sentinel instalado y disponible.' -ForegroundColor Green
         Write-Host "Abrir: $web"
         Write-Host 'Los datos permanecen en el volumen de PostgreSQL.'

@@ -41,8 +41,6 @@ func TestCrearServicioRechazaSolicitudesInvalidas(t *testing.T) {
 		},
 	}
 
-	// No necesitamos repositorios porque todas
-	// las solicitudes se rechazan antes de acceder a ellos.
 	handler := NewHandler(nil, nil, nil, nil)
 
 	for _, caso := range casos {
@@ -185,8 +183,6 @@ func TestAPIRechazaJSONExcesivo(t *testing.T) {
 
 	for _, caso := range casos {
 		t.Run(caso.nombre, func(t *testing.T) {
-			// JSON valido, pero con espacios suficientes
-			// para superar el limite permitido.
 			cuerpo := caso.cuerpo +
 				strings.Repeat(" ", limite)
 
@@ -511,6 +507,48 @@ func TestAPIRechazaURLConCredenciales(t *testing.T) {
 
 			if strings.Contains(rec.Body.String(), "clave-ficticia") {
 				t.Fatal("La respuesta expuso credenciales")
+			}
+		})
+	}
+}
+
+func TestOrigenAdministrativoPuertoAlternativo(t *testing.T) {
+	t.Setenv("SARGAS_PUBLIC_PORT", "8081")
+
+	handler := protegerOrigenAdministrativo(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}),
+	)
+
+	casos := []struct {
+		nombre   string
+		origen   string
+		esperado int
+	}{
+		{"localhost permitido", "http://localhost:8081", 204},
+		{"127 permitido", "http://127.0.0.1:8081", 204},
+		{"puerto anterior", "http://localhost:8080", 403},
+		{"puerto distinto", "http://localhost:8082", 403},
+		{"origen externo", "https://ejemplo.com", 403},
+		{"desarrollo Vite", "http://localhost:5173", 204},
+	}
+
+	for _, caso := range casos {
+		t.Run(caso.nombre, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/servicios", nil)
+			req.Header.Set("Origin", caso.origen)
+
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+
+			if resp.Code != caso.esperado {
+				t.Errorf(
+					"Origen %s: esperado %d, obtenido %d",
+					caso.origen,
+					caso.esperado,
+					resp.Code,
+				)
 			}
 		})
 	}

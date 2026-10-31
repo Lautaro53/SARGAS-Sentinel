@@ -134,3 +134,45 @@ func TestMensajeSeguroMonitoreo(t *testing.T) {
 		})
 	}
 }
+
+func TestProtegerHostLocalPuertoAlternativo(t *testing.T) {
+	t.Setenv("SARGAS_PUBLIC_PORT", "8081")
+
+	handler := protegerHostLocal(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	))
+
+	casos := []struct {
+		host     string
+		esperado int
+	}{
+		{"127.0.0.1:8081", 204},
+		{"localhost:8081", 204},
+		{"127.0.0.1:8080", 403},
+		{"localhost:8082", 403},
+		{"ejemplo.com:8081", 403},
+	}
+
+	for _, caso := range casos {
+		t.Run(caso.host, func(t *testing.T) {
+			req := httptest.NewRequest(
+				http.MethodGet, "/", nil,
+			)
+			req.Host = caso.host
+
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+
+			if resp.Code != caso.esperado {
+				t.Errorf(
+					"Host %s: esperado %d, obtenido %d",
+					caso.host,
+					caso.esperado,
+					resp.Code,
+				)
+			}
+		})
+	}
+}

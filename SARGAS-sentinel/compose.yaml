@@ -45,6 +45,7 @@ services:
     environment:
       DATABASE_URL: "postgres://sentinel_app@postgres:5432/sargas_sentinel?sslmode=disable"
       SARGAS_HTTP_ADDR: "0.0.0.0:8080"
+      SARGAS_PUBLIC_PORT: "${SARGAS_HOST_PORT:-8080}"
 
     secrets:
       - sentinel_app_password
@@ -57,8 +58,7 @@ services:
         exec /app/sentinel
 
     ports:
-      - "127.0.0.1:8080:8080"
-
+      - "127.0.0.1:${SARGAS_HOST_PORT:-8080}:8080"
 
 secrets:
   postgres_password:

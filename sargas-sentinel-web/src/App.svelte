@@ -16,7 +16,6 @@
     | { pagina: "servicios"; detalleId: number };
 
   function interpretarRuta(path: string): Ruta {
-    // La SPA acepta /servicios/ e /incidentes/ igual que el router Go.
     if (path.length > 1) path = path.replace(/\/+$/, "");
     if (path === "/servicios") return { pagina: "servicios", detalleId: null };
     if (path === "/incidentes")
@@ -50,7 +49,6 @@
     }
 
     const id = ruta.detalleId;
-    // El listado operativo es el contrato GET disponible en v1.0.
     if (servicioSeleccionado?.id === id) {
       cargandoDetalle = false;
       return;
@@ -85,7 +83,6 @@
   }
 
   function abrirDetalle(servicio: Servicio) {
-    // Ya disponemos del servicio validado: evitamos una consulta duplicada.
     servicioSeleccionado = servicio;
     cambiarRuta(`/servicios/${servicio.id}`);
   }

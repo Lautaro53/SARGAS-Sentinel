@@ -51,7 +51,6 @@
             y: 155 - (item.latencia_ms / latenciaMaxima) * 110,
             latencia: item.latencia_ms,
             fecha: item.comprobado_en,
-            // Mismo criterio de éxito que la evaluación del backend (HTTP 2xx).
             tieneError:
                 item.error !== null ||
                 item.codigo_http === null ||

@@ -34,7 +34,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 	}
 	defer pool.Close()
 
-	// Impedir escrituras sobre la base principal.
 	var base string
 	if err := pool.QueryRow(
 		ctx, "SELECT current_database()",
@@ -82,7 +81,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 		},
 	)
 
-	// Simular un Manager que ya no acepta trabajadores.
 	manager.Cerrar()
 
 	handler := NewHandler(repo, nil, manager, nil)
@@ -97,7 +95,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	// El Manager cerrado debe provocar HTTP 503.
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf(
 			"Esperado HTTP 503, recibido %d: %s",
@@ -105,7 +102,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 		)
 	}
 
-	// Comprobar si PostgreSQL guardo el cambio.
 	var habilitado bool
 
 	err = pool.QueryRow(ctx,
@@ -123,7 +119,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 
 	t.Log("HTTP 503: cambio persistido, Manager no sincronizado")
 
-	// Simular el arranque de un nuevo Manager.
 	iniciados := make(chan service.Servicio, 1)
 
 	nuevoManager := monitor.NewManager(
@@ -135,7 +130,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 	)
 	defer nuevoManager.Cerrar()
 
-	// Recuperar la configuracion persistida.
 	servicios, err := repo.Listar(ctx)
 	if err != nil {
 		t.Fatalf("Recuperar servicios: %v", err)
@@ -163,7 +157,6 @@ func TestAPIManagerCerradoIntegracion(t *testing.T) {
 		t.Fatal("El servicio no se recupero desde PostgreSQL")
 	}
 
-	// Confirmar que el nuevo trabajador se inicio.
 	select {
 	case activo := <-iniciados:
 		if activo.ID != s.ID || !activo.Habilitado {

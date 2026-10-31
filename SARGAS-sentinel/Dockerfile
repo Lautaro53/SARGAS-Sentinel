@@ -22,7 +22,7 @@ RUN go mod download
 
 COPY . .
 
-# Copiamos el frontend generado por la etapa anterior.
+# Se copia el frontend generado por la etapa anterior.
 COPY --from=web-build /web/dist ./cmd/sentinel/web/dist
 
 RUN CGO_ENABLED=0 GOOS=linux \

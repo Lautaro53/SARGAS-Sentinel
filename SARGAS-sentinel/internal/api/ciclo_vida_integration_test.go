@@ -34,7 +34,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 	}
 	defer pool.Close()
 
-	// Proteger la base principal.
 	var base string
 	err = pool.QueryRow(ctx,
 		"SELECT current_database()",
@@ -48,7 +47,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 
 	repo := repository.NuevoServicioRepository(pool)
 
-	// Crear un servicio inicialmente pausado.
 	s, err := repo.Crear(ctx, service.Servicio{
 		Nombre:     "Integracion API Manager",
 		URL:        "https://example.com",
@@ -61,7 +59,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Limpiar exclusivamente el servicio de prueba.
 	defer func() {
 		cleanupCtx, cancelar := context.WithTimeout(
 			context.Background(), 5*time.Second,
@@ -79,7 +76,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 	iniciados := make(chan int64, 4)
 	terminados := make(chan int64, 4)
 
-	// Trabajador controlado: no hace peticiones HTTP.
 	manager := monitor.NewManager(
 		context.Background(),
 		func(ctx context.Context, s service.Servicio) {
@@ -146,7 +142,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 				)
 			}
 
-			// Comprobar PostgreSQL.
 			var habilitado, archivado bool
 
 			err := pool.QueryRow(ctx, `
@@ -166,7 +161,6 @@ func TestAPICicloVidaServicioIntegracion(t *testing.T) {
 				)
 			}
 
-			// Comprobar el comportamiento del Manager.
 			var canal <-chan int64
 
 			if paso.evento == "inicio" {

@@ -81,7 +81,7 @@
         }),
     );
 
-    const SERVICIOS_POR_PAGINA = 10;
+    const SERVICIOS_POR_PAGINA = 20;
 
     let paginaServicios = $state(1);
 
@@ -99,6 +99,22 @@
             paginaActualServicios * SERVICIOS_POR_PAGINA,
         ),
     );
+
+    let contenedorTabla = $state<HTMLDivElement | undefined>(undefined);
+
+    let alturaTabla = $state<number | null>(null);
+
+    function cambiarPaginaServicios(destino: number) {
+        if (destino < 1 || destino > totalPaginasServicios) return;
+
+        if (paginaActualServicios === 1 && contenedorTabla) {
+            alturaTabla = Math.ceil(
+                contenedorTabla.getBoundingClientRect().height,
+            );
+        }
+
+        paginaServicios = destino;
+    }
 
     function leerCache(): {
         servicios: Servicio[];
@@ -243,14 +259,12 @@
         }
 
         async function actualizarDatos() {
-            // Evitar consultas superpuestas.
             if (consultaEnCurso) return;
 
             consultaEnCurso = true;
             actualizando = true;
 
             try {
-                // Consultar servicios y sus estados.
                 const lista = await obtenerServicios();
 
                 const nuevosEstados = await Promise.all(
@@ -282,7 +296,6 @@
                     // Un fallo de almacenamiento no debe afectar
                     // los datos recibidos correctamente desde la API.
                 }
-                // Recuperar el historial sin alterar los estados principales.
                 const resultadoHistorial = await consultarHistoriales(lista);
 
                 if (!activo) return;
@@ -353,17 +366,14 @@
             }
         }
 
-        // Primera consulta al abrir la pantalla.
         void actualizarDatos();
         void actualizarIncidentes();
 
-        // Repetir cada 15 segundos.
         const temporizador = window.setInterval(() => {
             void actualizarDatos();
             void actualizarIncidentes();
         }, 15_000);
 
-        // Limpiar al desmontar el componente.
         return () => {
             activo = false;
             window.clearInterval(temporizador);
@@ -558,7 +568,14 @@
         {:else if servicios.length === 0}
             <p class="table-message">Todavía no hay servicios registrados.</p>
         {:else}
-            <div class="table-scroll">
+            <div
+                class="table-scroll"
+                bind:this={contenedorTabla}
+                style:min-height={totalPaginasServicios > 1 &&
+                alturaTabla !== null
+                    ? `${alturaTabla}px`
+                    : undefined}
+            >
                 <table>
                     <thead>
                         <tr>
@@ -700,7 +717,7 @@
                         type="button"
                         disabled={paginaActualServicios === 1}
                         onclick={() =>
-                            (paginaServicios = paginaActualServicios - 1)}
+                            cambiarPaginaServicios(paginaActualServicios - 1)}
                     >
                         Anterior
                     </button>
@@ -710,7 +727,7 @@
                         disabled={paginaActualServicios ===
                             totalPaginasServicios}
                         onclick={() =>
-                            (paginaServicios = paginaActualServicios + 1)}
+                            cambiarPaginaServicios(paginaActualServicios + 1)}
                     >
                         Siguiente
                     </button>
