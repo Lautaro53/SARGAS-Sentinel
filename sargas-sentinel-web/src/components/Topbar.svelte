@@ -1,5 +1,9 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { Moon, Menu } from "@lucide/svelte";
+  import { obtenerServicios } from "../api/servicios";
+
+  type EstadoConexion = "comprobando" | "conectado" | "desconectado";
 
   type Props = {
     menuAbierto: boolean;
@@ -7,6 +11,54 @@
   };
 
   let { menuAbierto, alternarMenu }: Props = $props();
+
+  let estadoConexion = $state<EstadoConexion>("comprobando");
+  let horaLocal = $state("");
+
+  onMount(() => {
+    let activo = true;
+    let consultaEnCurso = false;
+
+    function actualizarHora() {
+      horaLocal = new Date().toLocaleTimeString("es-UY", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    }
+
+    async function comprobarConexion() {
+      if (consultaEnCurso) return;
+      consultaEnCurso = true;
+
+      try {
+        await obtenerServicios();
+
+        if (activo) {
+          estadoConexion = "conectado";
+        }
+      } catch {
+        if (activo) {
+          estadoConexion = "desconectado";
+        }
+      } finally {
+        consultaEnCurso = false;
+      }
+    }
+
+    actualizarHora();
+    void comprobarConexion();
+
+    const reloj = window.setInterval(actualizarHora, 1000);
+    const conexion = window.setInterval(() => void comprobarConexion(), 30_000);
+
+    return () => {
+      activo = false;
+      window.clearInterval(reloj);
+      window.clearInterval(conexion);
+    };
+  });
 </script>
 
 <header class="topbar">
@@ -30,18 +82,40 @@
 
   <div class="topbar-actions">
     <div class="system-indicator">
-      <span class="system-dot"></span>
+      <span
+        class="system-dot"
+        class:connected={estadoConexion === "conectado"}
+        class:disconnected={estadoConexion === "desconectado"}
+        aria-hidden="true"
+      ></span>
 
-      <div class="system-copy">
-        <strong>Estado no conectado</strong>
-        <span>Pendiente de integración</span>
+      <div class="system-copy" role="status">
+        <strong>
+          {#if estadoConexion === "conectado"}
+            API conectada
+          {:else if estadoConexion === "desconectado"}
+            Sin conexión
+          {:else}
+            Comprobando...
+          {/if}
+        </strong>
+
+        <span>
+          {#if estadoConexion === "conectado"}
+            Servidor disponible
+          {:else if estadoConexion === "desconectado"}
+            No se pudo consultar la API
+          {:else}
+            Verificando servidor
+          {/if}
+        </span>
       </div>
     </div>
 
     <div class="topbar-separator"></div>
 
     <div class="datetime">
-      <span>—</span>
+      <span>{horaLocal || "—"}</span>
       <small>Hora local</small>
     </div>
 
@@ -57,13 +131,13 @@
 
 <style>
   .topbar {
-    min-height: 92px;
-    padding: 20px 28px;
+    min-height: 72px;
+    padding: 12px 24px;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 28px;
+    gap: 20px;
 
     background: var(--color-sidebar);
 
@@ -80,7 +154,7 @@
   }
 
   .topbar-heading {
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
   }
 
@@ -97,19 +171,40 @@
   }
 
   .page-heading p {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     color: var(--color-muted);
     font-size: 13px;
     line-height: 1.5;
   }
 
   .topbar-actions {
-    gap: 20px;
+    gap: 16px;
     flex-shrink: 0;
   }
 
   .system-indicator {
     gap: 10px;
+  }
+
+  .system-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--color-unknown);
+  }
+
+  .system-dot.connected {
+    background: var(--color-up);
+  }
+
+  .system-dot.disconnected {
+    background: var(--color-down);
+  }
+
+  .datetime > span {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .system-copy,
@@ -183,8 +278,8 @@
 
   @media (max-width: 760px) {
     .topbar {
-      min-height: 72px;
-      padding: 14px 16px;
+      min-height: 64px;
+      padding: 12px 16px;
       gap: 12px;
     }
 

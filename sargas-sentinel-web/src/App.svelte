@@ -108,7 +108,7 @@
     <Topbar {menuAbierto} alternarMenu={() => (menuAbierto = !menuAbierto)} />
     <main class="page-content">
       {#if ruta.pagina === "dashboard"}
-        <Dashboard />
+        <Dashboard onVerDetalle={abrirDetalle} />
       {:else if ruta.pagina === "servicios"}
         {#if ruta.detalleId !== null}
           {#if cargandoDetalle}
@@ -153,32 +153,26 @@
 
   .page-content {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 32px 32px 40px;
+    padding: 24px 24px 32px;
     flex: 1;
   }
 
   .footer-container {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 24px;
   }
 
   @media (max-width: 760px) {
     .page-content {
-      padding: 24px 16px 32px;
+      padding: 20px 16px 24px;
     }
 
     .footer-container {
       padding: 0 16px;
-    }
-  }
-  
-  @media (max-width: 760px) {
-    .page-content {
-      padding: 28px 16px;
     }
   }
 </style>

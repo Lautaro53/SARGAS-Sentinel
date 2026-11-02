@@ -33,4 +33,12 @@
   /* Bordes redondeados */
   --radius-card: 12px;
   --radius-control: 8px;
-} 
+
+  /* Escala de espaciados */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}

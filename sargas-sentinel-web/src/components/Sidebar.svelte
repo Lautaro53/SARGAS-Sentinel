@@ -80,14 +80,7 @@
 
   <div class="sidebar-footer">
     <div class="sidebar-footer-content">
-      <Orbit size={19} strokeWidth={1.7} aria-hidden="true" />
-
-      <div class="sidebar-footer-info">
-        <strong>SARGAS Sentinel</strong>
-        <span>Monitor HTTP</span>
-      </div>
-
-      <span class="version-badge">v1.1.5</span>
+      <span class="version-badge">v1.1.6</span>
     </div>
   </div>
 </aside>
@@ -95,13 +88,20 @@
 <style>
   .sidebar {
     width: 248px;
+    height: 100vh;
+    height: 100dvh;
+    position: sticky;
+    top: 0;
     flex-shrink: 0;
+
     background: var(--color-sidebar);
     border-right: 1px solid var(--color-border);
 
     display: flex;
     flex-direction: column;
-    padding: 24px 14px 0;
+    padding: 20px 14px 0;
+
+    overflow-y: auto;
   }
 
   .brand {
@@ -206,26 +206,6 @@
     color: var(--color-primary);
   }
 
-  .sidebar-footer-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .sidebar-footer-info strong {
-    color: var(--color-text);
-    font-size: 11px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .sidebar-footer-info span {
-    color: var(--color-muted);
-    font-size: 10px;
-  }
-
   .version-badge {
     flex-shrink: 0;
     padding: 4px 6px;
@@ -244,9 +224,14 @@
       top: 64px;
       left: 0;
       right: 0;
+
       width: 100%;
+      height: auto;
+      max-height: calc(100dvh - 64px);
       min-height: 0;
+
       z-index: 10;
+      overflow-y: auto;
     }
 
     .sidebar.abierto {

@@ -413,7 +413,7 @@
 
     th {
         color: var(--color-muted);
-        background: #15243a;
+        background: var(--color-surface-elevated);
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -472,7 +472,7 @@
     }
 
     .create-button:hover {
-        background: #1c6ce0;
+        background: var(--color-primary-hover);
     }
 
     .create-button:focus-visible {
@@ -502,7 +502,7 @@
     }
 
     .edit-button:hover {
-        background: #163968;
+        background: color-mix(in srgb, var(--color-primary) 14%, transparent);
     }
 
     .edit-button:focus-visible {
@@ -559,7 +559,7 @@
 
     .archive-button:hover:not(:disabled) {
         border-color: var(--color-down);
-        background: rgba(240, 93, 108, 0.08);
+        background: color-mix(in srgb, var(--color-down) 12%, transparent);
     }
 
     .archive-button:focus-visible {
@@ -583,7 +583,7 @@
 
     .archive-button:hover:not(:disabled) {
         border-color: var(--color-down);
-        background: rgba(240, 93, 108, 0.08);
+        background: color-mix(in srgb, var(--color-down) 12%, transparent);
     }
 
     .archive-button:focus-visible {

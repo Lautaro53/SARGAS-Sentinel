@@ -13,16 +13,17 @@
 
     import { obtenerTodosIncidentes } from "../api/incidentes";
 
-    import {
-        ShieldAlert,
-        CircleCheck,
-        CircleAlert,
-        Globe,
-    } from "@lucide/svelte";
+    import { Globe } from "@lucide/svelte";
 
     import CheckHistory from "../components/CheckHistory.svelte";
     import { obtenerComprobaciones } from "../api/comprobaciones";
     import type { Comprobacion } from "../types/comprobacion";
+
+    type Props = {
+        onVerDetalle: (servicio: Servicio) => void;
+    };
+
+    let { onVerDetalle }: Props = $props();
 
     const CLAVE_CACHE = "sargas.dashboard.v1";
     const CLAVE_CACHE_INCIDENTES = "sargas.dashboard.incidentes.v1";
@@ -61,27 +62,7 @@
 
     let deshabilitados = $derived(estados.filter((s) => !s.habilitado).length);
 
-    let serviciosAtencion = $derived(
-        servicios.flatMap((servicio) => {
-            if (!servicio.habilitado) return [];
-
-            const estado = estados.find((e) => e.servicio_id === servicio.id);
-
-            if (!estado || estado.estado === "UP") {
-                return [];
-            }
-
-            return [
-                {
-                    id: servicio.id,
-                    nombre: servicio.nombre,
-                    estado: estado.estado,
-                },
-            ];
-        }),
-    );
-
-    const SERVICIOS_POR_PAGINA = 20;
+    const SERVICIOS_POR_PAGINA = 10;
 
     let paginaServicios = $state(1);
 
@@ -218,7 +199,7 @@
             const lote = lista.slice(i, i + TAMANO_LOTE);
 
             const resultados = await Promise.allSettled(
-                lote.map((servicio) => obtenerComprobaciones(servicio.id, 10)),
+                lote.map((servicio) => obtenerComprobaciones(servicio.id, 20)),
             );
 
             resultados.forEach((resultado, indice) => {
@@ -425,27 +406,15 @@
                 <MetricCard
                     titulo="Servicios registrados"
                     valor={servicios.length}
-                    descripcion="Total configurado"
                 />
 
-                <MetricCard
-                    titulo="Disponibles"
-                    valor={disponibles}
-                    descripcion="Estado UP"
-                    tono="up"
-                />
+                <MetricCard titulo="Estado UP" valor={disponibles} tono="up" />
+
+                <MetricCard titulo="Estado DOWN" valor={caidos} tono="down" />
 
                 <MetricCard
-                    titulo="No disponibles"
-                    valor={caidos}
-                    descripcion="Estado DOWN"
-                    tono="down"
-                />
-
-                <MetricCard
-                    titulo="Sin determinar"
+                    titulo="Estado UNKNOWN"
                     valor={desconocidos}
-                    descripcion="Estado UNKNOWN"
                     tono="unknown"
                 />
 
@@ -453,19 +422,8 @@
                     <MetricCard
                         titulo="Incidentes abiertos"
                         valor={incidentesAbiertos}
-                        descripcion={incidentesDesdeCache
-                            ? "Conteo guardado · últimos 50 incidentes"
-                            : "Entre los últimos 50 incidentes"}
                         tono="down"
                     />
-                {/if}
-
-                {#if incidentesDesdeCache && fechaIncidentes !== null}
-                    <p class="demo-note" role="status">
-                        Conteo de incidentes guardado el
-                        {fechaIncidentes.toLocaleString("es-UY")}. Pendiente de
-                        actualización.
-                    </p>
                 {/if}
             </div>
 
@@ -479,86 +437,12 @@
                     {/if}
                 </p>
             {/if}
-
-            {#if deshabilitados > 0}
-                <p class="demo-note">
-                    {deshabilitados} servicio(s) deshabilitado(s), excluido(s) del
-                    desglose de estados.
-                </p>
-            {/if}
         {/if}
     </section>
 
-    <div class="dashboard-overview">
-        <section class="chart-panel" aria-labelledby="chart-title">
-            <div class="chart-header">
-                <h2 id="chart-title">Gráfico de monitoreo</h2>
-            </div>
-
-            <div class="chart-placeholder">
-                <p>Visualización pendiente de definición.</p>
-            </div>
-        </section>
-
-        <section class="attention-panel" aria-labelledby="attention-title">
-            <div class="attention-header">
-                <ShieldAlert size={19} strokeWidth={1.8} aria-hidden="true" />
-                <h2 id="attention-title">Servicios que requieren atención</h2>
-            </div>
-
-            {#if cargando}
-                <p class="attention-message">Consultando servicios...</p>
-            {:else if mensajeError || errorEstados || mostrandoCache}
-                <p class="attention-message">
-                    No se puede confirmar el estado actual de todos los
-                    servicios.
-                </p>
-            {:else if ultimaSincronizacion === null}
-                <p class="attention-message">No hay información disponible.</p>
-            {:else if serviciosAtencion.length === 0}
-                <div class="attention-empty">
-                    <CircleCheck
-                        size={28}
-                        strokeWidth={1.6}
-                        aria-hidden="true"
-                    />
-                    <strong>Todo en orden</strong>
-                    <p>No hay servicios activos que requieran atención.</p>
-                </div>
-            {:else}
-                <ul class="attention-list">
-                    {#each serviciosAtencion as servicio (servicio.id)}
-                        <li>
-                            <CircleAlert size={18} aria-hidden="true" />
-
-                            <div>
-                                <strong>{servicio.nombre}</strong>
-                                <span>{servicio.estado}</span>
-                            </div>
-                        </li>
-                    {/each}
-                </ul>
-            {/if}
-        </section>
-    </div>
-
     <section class="services-panel" aria-labelledby="services-title">
         <div class="panel-header">
-            <div>
-                <h2 id="services-title">Servicios monitorizados</h2>
-                <p>
-                    Estado y última comprobación de cada servicio. Los servicios
-                    pausados conservan su último estado conocido.
-                </p>
-            </div>
-
-            <span class="services-count">
-                {#if ultimaSincronizacion !== null}
-                    {servicios.length} registrados
-                {:else}
-                    Sin datos confirmados
-                {/if}
-            </span>
+            <h2 id="services-title">Servicios monitorizados</h2>
         </div>
 
         {#if cargando}
@@ -583,8 +467,8 @@
                             <th scope="col">Estado</th>
                             <th scope="col">Monitoreo</th>
                             <th scope="col">Última comprobación</th>
-                            <th scope="col">Latencia</th>
-                            <th scope="col">Últimas 10</th>
+                            <th scope="col">Última latencia</th>
+                            <th scope="col">Últimas 20</th>
                         </tr>
                     </thead>
 
@@ -615,13 +499,26 @@
                                         </div>
 
                                         <div class="service-info">
-                                            <strong class="service-name">
-                                                {servicio.nombre}
-                                            </strong>
+                                            <a
+                                                class="service-name"
+                                                href={`/servicios/${servicio.id}`}
+                                                title={servicio.url}
+                                                onclick={(evento) => {
+                                                    if (
+                                                        evento.button !== 0 ||
+                                                        evento.ctrlKey ||
+                                                        evento.metaKey ||
+                                                        evento.shiftKey ||
+                                                        evento.altKey
+                                                    )
+                                                        return;
 
-                                            <span class="service-url">
-                                                {servicio.url}
-                                            </span>
+                                                    evento.preventDefault();
+                                                    onVerDetalle(servicio);
+                                                }}
+                                            >
+                                                {servicio.nombre}
+                                            </a>
                                         </div>
                                     </div>
                                 </td>
@@ -670,8 +567,8 @@
                                             {ultimaComprobacion.latencia_ms.toLocaleString(
                                                 "es-UY",
                                                 {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 1,
                                                 },
                                             )} ms
                                         </span>
@@ -739,7 +636,7 @@
 
 <style>
     .metrics-section {
-        margin-top: 32px;
+        margin-top: var(--space-2);
     }
 
     .demo-note {
@@ -750,38 +647,55 @@
 
     .metrics-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
     }
+
+    .dashboard {
+        display: block;
+        min-width: 0;
+    }
+
+    .metrics-section {
+        grid-column: 1 / -1;
+        min-width: 0;
+    }
+
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        min-width: 0;
+    }
+
+    .metrics-section {
+        min-width: 0;
+    }
+
+.services-panel {
+    min-width: 0;
+    margin-top: 16px;
+    border: 1px solid #243245;
+    border-radius: var(--radius-card);
+    background: #141A22;
+    overflow: hidden;
+}
 
     .api-error {
         color: var(--color-down) !important;
-    }
-
-    .services-panel {
-        margin-top: 24px;
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-        background: var(--color-surface);
-        overflow: hidden;
     }
 
     .panel-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 16px;
-        padding: 24px;
+        padding: 12px 16px;
     }
 
     .panel-header h2 {
-        margin: 0 0 8px;
+        margin: 0 0 var(--space-2);
         font-size: 18px;
-    }
-
-    .panel-header p {
-        margin: 0;
+        line-height: 1.3;
     }
 
     .table-scroll {
@@ -796,7 +710,7 @@
     }
 
     th {
-        background: #15243a;
+        background: var(--color-surface-elevated);
         color: var(--color-muted);
         font-size: 11px;
         font-weight: 600;
@@ -804,34 +718,37 @@
         letter-spacing: 0.5px;
     }
 
-    th,
-    td {
-        padding: 16px 20px;
+    th {
+        padding: 10px 12px;
     }
 
     td {
-        border-top: 1px solid var(--color-border);
-        font-size: 13px;
-    }
-
-    .service-name,
-    .service-url {
-        display: block;
+        padding: 10px 12px;
     }
 
     .service-name {
+        display: block;
+        color: var(--color-text);
+        font-size: 13px;
         font-weight: 600;
+        line-height: 1.4;
+        text-decoration: none;
+        overflow-wrap: anywhere;
     }
 
-    .service-url {
-        margin-top: 6px;
-        color: var(--color-muted);
-        font-size: 12px;
-        overflow-wrap: anywhere;
+    .service-name:hover {
+        color: var(--color-primary-hover);
+    }
+
+    .service-name:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 3px;
+        border-radius: 2px;
     }
 
     .monitor-status {
         color: var(--color-up);
+        font-size: 12px;
         font-weight: 500;
     }
 
@@ -842,121 +759,6 @@
     .date-cell {
         color: var(--color-muted);
         font-variant-numeric: tabular-nums;
-    }
-
-    .attention-panel {
-        margin-top: 24px;
-        padding: 24px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-card);
-    }
-
-    .attention-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--color-text);
-    }
-
-    .attention-header h2 {
-        margin: 0;
-        font-size: 16px;
-    }
-
-    .attention-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        padding: 32px 12px;
-        text-align: center;
-        color: var(--color-up);
-    }
-
-    .attention-empty strong {
-        color: var(--color-text);
-    }
-
-    .attention-empty p,
-    .attention-message {
-        margin: 0;
-        color: var(--color-muted);
-        font-size: 13px;
-    }
-
-    .attention-message {
-        margin-top: 20px;
-    }
-
-    .attention-list {
-        list-style: none;
-        margin: 20px 0 0;
-        padding: 0;
-    }
-
-    .attention-list li {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 12px 0;
-        border-top: 1px solid var(--color-border);
-        color: var(--color-down);
-    }
-
-    .attention-list li div {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        min-width: 0;
-    }
-
-    .attention-list li strong {
-        color: var(--color-text);
-        font-size: 13px;
-    }
-
-    .attention-list li span {
-        color: var(--color-muted);
-        font-size: 12px;
-    }
-
-    .dashboard-overview {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-        gap: 16px;
-        margin-top: 24px;
-        align-items: stretch;
-    }
-
-    .chart-panel {
-        min-width: 0;
-        min-height: 260px;
-        padding: 24px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-card);
-    }
-
-    .chart-header h2 {
-        margin: 0;
-        color: var(--color-text);
-        font-size: 16px;
-    }
-
-    .chart-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 175px;
-        color: var(--color-muted);
-        text-align: center;
-        font-size: 13px;
-    }
-
-    .dashboard-overview .attention-panel {
-        margin-top: 0;
-        min-width: 0;
     }
 
     .service-identity {
@@ -972,8 +774,8 @@
         justify-content: center;
         flex-shrink: 0;
 
-        width: 38px;
-        height: 38px;
+        width: 32px;
+        height: 32px;
 
         color: var(--color-primary);
         background: color-mix(
@@ -1007,7 +809,7 @@
         display: flex;
         justify-content: flex-start;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
 
     .sync-row .demo-note {
@@ -1061,13 +863,13 @@
         outline-offset: 2px;
     }
 
-    @media (max-width: 900px) {
-        .dashboard-overview {
-            grid-template-columns: 1fr;
+    @media (max-width: 1200px) {
+        .metrics-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
     }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 760px) {
         .metrics-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }

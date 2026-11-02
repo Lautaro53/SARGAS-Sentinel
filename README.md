@@ -10,7 +10,7 @@ Desarrollado principalmente en **Go**, utiliza una arquitectura modular que sepa
 
 SARGAS busca ofrecer una solución ligera, confiable y extensible, orientada a desarrolladores y pequeños entornos de infraestructura.
 
-**Versión:** `v1.1.5` · **Licencia:** MIT
+**Versión:** `v1.1.6` · **Licencia:** MIT
 
 ---
 

@@ -22,12 +22,20 @@
   type Props = {
     titulo: string;
     valor: number;
-    descripcion: string;
+    descripcion?: string;
+    ayuda?: string;
     tono?: Tono;
     icono?: IconoMetrica;
   };
 
-  let { titulo, valor, descripcion, tono = "normal", icono }: Props = $props();
+  let {
+    titulo,
+    valor,
+    descripcion,
+    ayuda,
+    tono = "normal",
+    icono,
+  }: Props = $props();
 
   const Icono = $derived(icono ? iconos[icono] : null);
 </script>
@@ -37,6 +45,7 @@
   class:up={tono === "up"}
   class:down={tono === "down"}
   class:unknown={tono === "unknown"}
+  title={ayuda}
 >
   <div class="metric-header">
     <span class="metric-title">{titulo}</span>
@@ -48,18 +57,20 @@
 
   <strong class="metric-value">{valor}</strong>
 
-  <span class="metric-description">
-    {descripcion}
-  </span>
+  {#if descripcion}
+    <span class="metric-description">
+      {descripcion}
+    </span>
+  {/if}
 </article>
 
 <style>
   .metric-card {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 6px;
 
-    padding: 24px;
+    padding: 14px 16px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-card);
     background: var(--color-surface);
@@ -73,12 +84,13 @@
 
   .metric-title {
     color: var(--color-muted);
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.35;
   }
 
   .metric-value {
     color: var(--color-text);
-    font-size: 36px;
+    font-size: 34px;
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }

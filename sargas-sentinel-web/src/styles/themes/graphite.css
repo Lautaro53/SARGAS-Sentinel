@@ -1,0 +1,36 @@
+
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+
+  /* Fondos y superficies */
+  --color-background: #1C2026;
+  --color-sidebar: #222830;
+  --color-surface: #2A3038;
+  --color-surface-elevated: #353E47;
+  --color-border: #56616B;
+
+  /* Identidad SARGAS */
+  --color-primary: #E2B77B;
+  --color-primary-hover: #F4CD95;
+  --color-on-primary: #1C2026;
+
+  /* Tipografía */
+  --color-text: #F0EEE8;
+  --color-muted: #C4C8CB;
+
+  /* Estados de monitoreo */
+  --color-up: #7ED6AF;
+  --color-down: #F08F93;
+  --color-unknown: #B1BCC8;
+  --color-warning: #F0C36D;
+
+  /* Interacciones */
+  --color-focus: #E2B77B;
+
+  /* Efectos */
+  --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.22);
+
+  /* Bordes redondeados */
+  --radius-card: 12px;
+  --radius-control: 8px;
+}

@@ -205,7 +205,7 @@
 
   th {
     color: var(--color-muted);
-    background: #15243a;
+    background: var(--color-surface-elevated);
     font-size: 11px;
     text-transform: uppercase;
   }

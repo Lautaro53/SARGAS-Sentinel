@@ -1,0 +1,35 @@
+:root[data-theme="neon-blue"] {
+    color-scheme: dark;
+
+    /* Fondos y superficies — Black Electric */
+    --color-background: #06080B;
+    --color-sidebar: #0B0F14;
+    --color-surface: #121821;
+    --color-surface-elevated: #1A2533;
+    --color-border: #27374C;
+
+    /* Identidad SARGAS */
+    --color-primary: #0066FF;
+    --color-primary-hover: #2D85FF;
+    --color-on-primary: #FFFFFF;
+
+    /* Tipografía */
+    --color-text: #F5F7FA;
+    --color-muted: #A7B0BA;
+
+    /* Estados de monitoreo */
+    --color-up: #00D96B;
+    --color-down: #FF5A5F;
+    --color-unknown: #A7B0BA;
+    --color-warning: #FFB84D;
+
+    /* Interacciones */
+    --color-focus: #2D85FF;
+
+    /* Sombras */
+    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.20);
+
+    /* Bordes redondeados */
+    --radius-card: 12px;
+    --radius-control: 8px;
+}

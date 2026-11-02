@@ -7,19 +7,19 @@
 
     let { comprobaciones }: Props = $props();
 
-    const ultimasDiez = $derived(
+    const ultimasVeinte = $derived(
         [...comprobaciones]
             .sort(
                 (a, b) =>
                     new Date(a.comprobado_en).getTime() -
                     new Date(b.comprobado_en).getTime(),
             )
-            .slice(-10),
+            .slice(-20),
     );
 
     const segmentos = $derived([
-        ...Array(Math.max(0, 10 - ultimasDiez.length)).fill(null),
-        ...ultimasDiez,
+        ...Array(Math.max(0, 20 - ultimasVeinte.length)).fill(null),
+        ...ultimasVeinte,
     ] as (Comprobacion | null)[]);
 
     function exitosa(comprobacion: Comprobacion): boolean {
@@ -36,11 +36,11 @@
             return "Sin comprobación";
         }
 
-        const fecha = new Date(comprobacion.comprobado_en).toLocaleString(
-            "es-UY",
-        );
+        const fecha = new Date(comprobacion.comprobado_en);
 
-        const resultado = exitosa(comprobacion) ? "Exitosa" : "Fallida";
+        const resultado = exitosa(comprobacion)
+            ? "Comprobación exitosa"
+            : "Comprobación fallida";
 
         const detalle = comprobacion.error
             ? comprobacion.error
@@ -48,11 +48,24 @@
               ? `HTTP ${comprobacion.codigo_http}`
               : "Sin respuesta HTTP";
 
-        return `${fecha} · ${resultado} · ${detalle}`;
+        const latencia = comprobacion.latencia_ms.toLocaleString("es-UY", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 1,
+        });
+
+        return [
+            `${resultado} · ${detalle}`,
+            `Latencia: ${latencia} ms`,
+            `Fecha: ${fecha.toLocaleString("es-UY")}`,
+        ].join("\n");
     }
 </script>
 
-<div class="check-history" aria-label="Últimas cinco comprobaciones">
+<div
+    class="check-history"
+    role="img"
+    aria-label="Últimas veinte comprobaciones, ordenadas de la más antigua a la más reciente"
+>
     {#each segmentos as comprobacion, indice (indice)}
         <span
             class="check-segment"
@@ -68,16 +81,16 @@
     .check-history {
         display: flex;
         align-items: center;
-        gap: 3px;
+        gap: 2px;
         width: max-content;
     }
 
     .check-segment {
         display: block;
-        width: 10px;
-        height: 18px;
+        width: 6px;
+        height: 14px;
         flex-shrink: 0;
-        border-radius: 2px;
+        border-radius: 3px;
     }
 
     .success {
