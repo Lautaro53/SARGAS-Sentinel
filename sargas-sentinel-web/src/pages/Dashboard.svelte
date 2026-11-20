@@ -18,6 +18,8 @@
     import CheckHistory from "../components/CheckHistory.svelte";
     import { obtenerComprobaciones } from "../api/comprobaciones";
     import type { Comprobacion } from "../types/comprobacion";
+    import Paginacion from "../components/Paginacion.svelte";
+    import ServicioIdentidad from "../components/ServicioIdentidad.svelte";
 
     type Props = {
         onVerDetalle: (servicio: Servicio) => void;
@@ -440,7 +442,10 @@
         {/if}
     </section>
 
-    <section class="services-panel" aria-labelledby="services-title">
+    <section
+        class="services-panel data-table-panel"
+        aria-labelledby="services-title"
+    >
         <div class="panel-header">
             <h2 id="services-title">Servicios monitorizados</h2>
         </div>
@@ -489,38 +494,13 @@
 
                             <tr>
                                 <td>
-                                    <div class="service-identity">
-                                        <div class="service-icon">
-                                            <Globe
-                                                size={19}
-                                                strokeWidth={1.8}
-                                                aria-hidden="true"
-                                            />
-                                        </div>
-
-                                        <div class="service-info">
-                                            <a
-                                                class="service-name"
-                                                href={`/servicios/${servicio.id}`}
-                                                title={servicio.url}
-                                                onclick={(evento) => {
-                                                    if (
-                                                        evento.button !== 0 ||
-                                                        evento.ctrlKey ||
-                                                        evento.metaKey ||
-                                                        evento.shiftKey ||
-                                                        evento.altKey
-                                                    )
-                                                        return;
-
-                                                    evento.preventDefault();
-                                                    onVerDetalle(servicio);
-                                                }}
-                                            >
-                                                {servicio.nombre}
-                                            </a>
-                                        </div>
-                                    </div>
+                                    <ServicioIdentidad
+                                        id={servicio.id}
+                                        nombre={servicio.nombre}
+                                        url={servicio.url}
+                                        onVerDetalle={() =>
+                                            onVerDetalle(servicio)}
+                                    />
                                 </td>
 
                                 <td>
@@ -601,35 +581,11 @@
                     </tbody>
                 </table>
             </div>
-            <nav
-                class="services-pagination"
-                aria-label="Paginación de servicios"
-            >
-                <span class="pagination-info">
-                    Página {paginaActualServicios} de {totalPaginasServicios}
-                </span>
-
-                <div class="pagination-actions">
-                    <button
-                        type="button"
-                        disabled={paginaActualServicios === 1}
-                        onclick={() =>
-                            cambiarPaginaServicios(paginaActualServicios - 1)}
-                    >
-                        Anterior
-                    </button>
-
-                    <button
-                        type="button"
-                        disabled={paginaActualServicios ===
-                            totalPaginasServicios}
-                        onclick={() =>
-                            cambiarPaginaServicios(paginaActualServicios + 1)}
-                    >
-                        Siguiente
-                    </button>
-                </div>
-            </nav>
+            <Paginacion
+                pagina={paginaActualServicios}
+                totalPaginas={totalPaginasServicios}
+                onCambiarPagina={cambiarPaginaServicios}
+            />
         {/if}
     </section>
 </div>
@@ -672,14 +628,14 @@
         min-width: 0;
     }
 
-.services-panel {
-    min-width: 0;
-    margin-top: 16px;
-    border: 1px solid #243245;
-    border-radius: var(--radius-card);
-    background: #141A22;
-    overflow: hidden;
-}
+    .services-panel {
+        min-width: 0;
+        margin-top: 16px;
+        border: 1px solid #243245;
+        border-radius: var(--radius-card);
+        background: #141a22;
+        overflow: hidden;
+    }
 
     .api-error {
         color: var(--color-down) !important;
@@ -694,7 +650,7 @@
 
     .panel-header h2 {
         margin: 0 0 var(--space-2);
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1.3;
     }
 
@@ -726,32 +682,6 @@
         padding: 10px 12px;
     }
 
-    .service-name {
-        display: block;
-        color: var(--color-text);
-        font-size: 13px;
-        font-weight: 600;
-        line-height: 1.4;
-        text-decoration: none;
-        overflow-wrap: anywhere;
-    }
-
-    .service-name:hover {
-        color: var(--color-primary-hover);
-    }
-
-    .service-name:focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 3px;
-        border-radius: 2px;
-    }
-
-    .monitor-status {
-        color: var(--color-up);
-        font-size: 12px;
-        font-weight: 500;
-    }
-
     .monitor-status.paused {
         color: var(--color-muted);
     }
@@ -759,40 +689,6 @@
     .date-cell {
         color: var(--color-muted);
         font-variant-numeric: tabular-nums;
-    }
-
-    .service-identity {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-    }
-
-    .service-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-
-        width: 32px;
-        height: 32px;
-
-        color: var(--color-primary);
-        background: color-mix(
-            in srgb,
-            var(--color-primary) 9%,
-            var(--color-surface)
-        );
-
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-control);
-    }
-
-    .service-info {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        min-width: 0;
     }
 
     .latency-cell {
@@ -816,51 +712,6 @@
         margin: 0;
         color: var(--color-muted);
         font-size: 12px;
-    }
-
-    .services-pagination {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-        padding: 16px 20px;
-        border-top: 1px solid var(--color-border);
-    }
-
-    .pagination-info {
-        color: var(--color-muted);
-        font-size: 12px;
-    }
-
-    .pagination-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .pagination-actions button {
-        padding: 8px 14px;
-        color: var(--color-text);
-        background: var(--color-surface-elevated);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-control);
-        font-size: 12px;
-        cursor: pointer;
-    }
-
-    .pagination-actions button:hover:not(:disabled) {
-        border-color: var(--color-primary);
-        color: var(--color-primary-hover);
-    }
-
-    .pagination-actions button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
-
-    .pagination-actions button:focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 2px;
     }
 
     @media (max-width: 1200px) {

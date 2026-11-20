@@ -1,6 +1,7 @@
 @import './styles/themes/nebula.css';
 @import './styles/themes/graphite.css';
 @import './styles/themes/neon-blue.css';
+@import './styles/components/data-table.css';
 
 :root {
   font-family: "Segoe UI", Arial, sans-serif;

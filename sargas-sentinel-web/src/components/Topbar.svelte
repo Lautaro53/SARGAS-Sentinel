@@ -8,9 +8,11 @@
   type Props = {
     menuAbierto: boolean;
     alternarMenu: () => void;
+    titulo: string;
+    descripcion: string;
   };
 
-  let { menuAbierto, alternarMenu }: Props = $props();
+  let { menuAbierto, alternarMenu, titulo, descripcion }: Props = $props();
 
   let estadoConexion = $state<EstadoConexion>("comprobando");
   let horaLocal = $state("");
@@ -75,8 +77,8 @@
     </button>
 
     <div class="page-heading">
-      <h1>Panel general</h1>
-      <p>Disponibilidad y rendimiento de tus servicios en tiempo real.</p>
+      <h1>{titulo}</h1>
+      <p>{descripcion}</p>
     </div>
   </div>
 

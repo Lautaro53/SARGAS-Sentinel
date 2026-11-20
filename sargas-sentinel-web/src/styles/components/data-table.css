@@ -1,0 +1,66 @@
+/* Base visual compartida: Dashboard y Servicios */
+
+.data-table-panel {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    overflow: hidden;
+}
+
+.data-table-panel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.data-table-panel .panel-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.data-table-panel .panel-header > span {
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.data-table-panel .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.data-table-panel table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.data-table-panel th {
+    padding: 10px 12px;
+    background: var(--color-surface-elevated);
+    color: var(--color-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.data-table-panel td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--color-border);
+    font-size: 13px;
+}
+
+.data-table-panel tbody tr:hover {
+    background: color-mix(
+        in srgb,
+        var(--color-primary) 3%,
+        transparent
+    );
+}

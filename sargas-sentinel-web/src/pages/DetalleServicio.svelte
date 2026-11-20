@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
 
     import StatusBadge from "../components/StatusBadge.svelte";
+    import GraficoLatencia from "../components/GraficoLatencia.svelte";
     import { obtenerEstadoServicio } from "../api/servicios";
 
     import type { Servicio, EstadoServicio } from "../types/servicio";
@@ -31,57 +32,57 @@
     let cargandoIncidentes = $state(true);
     let errorIncidentes = $state("");
 
-    let comprobacionesCronologicas = $derived([...comprobaciones].reverse());
+    type CantidadGrafica = 20 | 50 | 100;
+    let cantidadGrafica = $state<CantidadGrafica>(20);
+    let ultimaSincronizacionGrafica = $state<string | null>(null);
 
-    let latenciaMaxima = $derived(
-        Math.max(
-            0.01,
-            ...comprobacionesCronologicas.map((item) => item.latencia_ms),
-        ),
-    );
+    // La selección y el identificador controlan el ciclo de vida de la consulta.
+    $effect(() => {
+        const servicioId = servicio.id;
+        const cantidad = cantidadGrafica;
+        const controlador = new AbortController();
+        let vigente = true;
+        let consultando = false;
 
-    let puntosLatencia = $derived(
-        comprobacionesCronologicas.map((item, indice) => ({
-            id: item.id,
-            x:
-                comprobacionesCronologicas.length === 1
-                    ? 300
-                    : 42 +
-                      (indice * 518) / (comprobacionesCronologicas.length - 1),
-            y: 155 - (item.latencia_ms / latenciaMaxima) * 110,
-            latencia: item.latencia_ms,
-            fecha: item.comprobado_en,
-            tieneError:
-                item.error !== null ||
-                item.codigo_http === null ||
-                item.codigo_http < 200 ||
-                item.codigo_http >= 300,
-        })),
-    );
+        cargandoComprobaciones = true;
+        errorComprobaciones = "";
+
+        async function actualizar() {
+            if (consultando || document.hidden) return;
+            consultando = true;
+            try {
+                const datos = await obtenerComprobaciones(servicioId, cantidad, controlador.signal);
+                if (vigente) {
+                    comprobaciones = datos;
+                    ultimaSincronizacionGrafica = new Date().toISOString();
+                    errorComprobaciones = "";
+                }
+            } catch (e) {
+                if (vigente) {
+                    errorComprobaciones = e instanceof Error
+                        ? e.message : "No se pudo consultar el historial";
+                }
+            } finally {
+                consultando = false;
+                if (vigente) cargandoComprobaciones = false;
+            }
+        }
+
+        void actualizar();
+        const intervalo = window.setInterval(() => void actualizar(), 15_000);
+        const volverAVer = () => { if (!document.hidden) void actualizar(); };
+        document.addEventListener("visibilitychange", volverAVer);
+
+        return () => {
+            vigente = false;
+            controlador.abort();
+            window.clearInterval(intervalo);
+            document.removeEventListener("visibilitychange", volverAVer);
+        };
+    });
 
     onMount(() => {
         let activo = true;
-
-        async function cargarComprobaciones() {
-            try {
-                const datos = await obtenerComprobaciones(servicio.id);
-
-                if (activo) {
-                    comprobaciones = datos;
-                }
-            } catch (e) {
-                if (activo) {
-                    errorComprobaciones =
-                        e instanceof Error
-                            ? e.message
-                            : "No se pudo consultar el historial";
-                }
-            } finally {
-                if (activo) {
-                    cargandoComprobaciones = false;
-                }
-            }
-        }
 
         async function cargarEstado() {
             try {
@@ -126,7 +127,6 @@
         }
 
         void cargarEstado();
-        void cargarComprobaciones();
         void cargarIncidentes();
 
         return () => {
@@ -204,116 +204,25 @@
         </dl>
     </section>
 
-    <section class="card" aria-labelledby="latency-title">
-        <h2 id="latency-title">Evolución de latencia</h2>
-
+    <section class="card" aria-label="Evolución de latencia">
         {#if cargandoComprobaciones}
             <p class="message">Cargando latencias...</p>
-        {:else if errorComprobaciones}
-            <p class="error" role="alert">No se pudo cargar el gráfico.</p>
+        {:else if errorComprobaciones && comprobaciones.length === 0}
+            <p class="error" role="alert">{errorComprobaciones}</p>
         {:else if comprobaciones.length === 0}
             <p class="message">Todavía no hay comprobaciones para graficar.</p>
         {:else}
-            <p class="message">
-                Últimas {comprobaciones.length} comprobaciones. Los puntos rojos
-                indican fallos HTTP o errores de conexión.
-            </p>
-
-            <div class="latency-scroll">
-                <svg
-                    class="latency-graph"
-                    viewBox="0 0 600 190"
-                    role="img"
-                    aria-label="Evolución de la latencia en milisegundos, desde la comprobación más antigua hasta la más reciente"
-                >
-                    <title>Latencia de las últimas comprobaciones</title>
-
-                    <!-- Líneas horizontales de referencia -->
-                    <line
-                        x1="42"
-                        y1="45"
-                        x2="560"
-                        y2="45"
-                        stroke="var(--color-border)"
-                    />
-
-                    <line
-                        x1="42"
-                        y1="155"
-                        x2="560"
-                        y2="155"
-                        stroke="var(--color-muted)"
-                    />
-
-                    <!-- Valores del eje vertical -->
-                    <text
-                        x="42"
-                        y="29"
-                        fill="var(--color-muted)"
-                        font-size="12"
-                    >
-                        {latenciaMaxima.toFixed(2)} ms
-                    </text>
-
-                    <text
-                        x="12"
-                        y="159"
-                        fill="var(--color-muted)"
-                        font-size="12"
-                    >
-                        0
-                    </text>
-
-                    <!-- Línea que conecta las comprobaciones -->
-                    <polyline
-                        points={puntosLatencia
-                            .map((punto) => `${punto.x},${punto.y}`)
-                            .join(" ")}
-                        fill="none"
-                        stroke="var(--color-primary)"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    />
-
-                    <!-- Puntos individuales -->
-                    {#each puntosLatencia as punto (punto.id)}
-                        <circle
-                            cx={punto.x}
-                            cy={punto.y}
-                            r="4"
-                            fill={punto.tieneError
-                                ? "var(--color-down)"
-                                : "var(--color-primary)"}
-                        >
-                            <title>
-                                {new Date(punto.fecha).toLocaleString("es-UY")}
-                                — {punto.latencia.toFixed(2)} ms
-                            </title>
-                        </circle>
-                    {/each}
-
-                    <!-- Dirección cronológica -->
-                    <text
-                        x="42"
-                        y="181"
-                        fill="var(--color-muted)"
-                        font-size="12"
-                    >
-                        Más antigua
-                    </text>
-
-                    <text
-                        x="560"
-                        y="181"
-                        text-anchor="end"
-                        fill="var(--color-muted)"
-                        font-size="12"
-                    >
-                        Más reciente
-                    </text>
-                </svg>
-            </div>
+            {#if errorComprobaciones}
+                <p class="refresh-warning" role="status">
+                    No se pudo actualizar la gráfica. Se muestran datos de la última consulta correcta.
+                </p>
+            {/if}
+            <GraficoLatencia
+                {comprobaciones}
+                cantidad={cantidadGrafica}
+                ultimaSincronizacion={ultimaSincronizacionGrafica}
+                onCambiarCantidad={(cantidad) => (cantidadGrafica = cantidad)}
+            />
         {/if}
     </section>
 
@@ -322,7 +231,7 @@
 
         {#if cargandoComprobaciones}
             <p class="message">Cargando comprobaciones...</p>
-        {:else if errorComprobaciones}
+        {:else if errorComprobaciones && comprobaciones.length === 0}
             <p class="error" role="alert">
                 {errorComprobaciones}
             </p>
@@ -343,7 +252,7 @@
                     </thead>
 
                     <tbody>
-                        {#each comprobaciones as comprobacion (comprobacion.id)}
+                        {#each comprobaciones.slice(0, 20) as comprobacion (comprobacion.id)}
                             <tr>
                                 <td>
                                     {new Date(
@@ -583,15 +492,9 @@
         color: var(--color-muted);
     }
 
-    .latency-scroll {
-        overflow-x: auto;
-    }
-
-    .latency-graph {
-        display: block;
-        width: 100%;
-        min-width: 480px;
-        height: auto;
+    .refresh-warning {
+        color: var(--color-warning);
+        font-size: 12px;
     }
 
     .incident-status {

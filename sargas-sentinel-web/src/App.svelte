@@ -36,6 +36,26 @@
   let errorDetalle = $state("");
   let revision = 0;
 
+  let tituloTopbar = $derived(
+    ruta.detalleId !== null
+      ? "Detalle del servicio"
+      : ruta.pagina === "servicios"
+        ? "Servicios"
+        : ruta.pagina === "incidentes"
+          ? "Incidentes"
+          : "Panel general",
+  );
+
+  let descripcionTopbar = $derived(
+    ruta.detalleId !== null
+      ? "Información y monitoreo del servicio seleccionado."
+      : ruta.pagina === "servicios"
+        ? "Administración de servicios monitorizados."
+        : ruta.pagina === "incidentes"
+          ? "Seguimiento y gestión de incidentes."
+          : "Disponibilidad y rendimiento de tus servicios en tiempo real.",
+  );
+
   async function sincronizarRuta() {
     const version = ++revision;
     ruta = interpretarRuta(window.location.pathname);
@@ -105,7 +125,12 @@
 <div class="app-shell">
   <Sidebar {menuAbierto} paginaActual={ruta.pagina} {navegar} />
   <div class="workspace">
-    <Topbar {menuAbierto} alternarMenu={() => (menuAbierto = !menuAbierto)} />
+    <Topbar
+      {menuAbierto}
+      alternarMenu={() => (menuAbierto = !menuAbierto)}
+      titulo={tituloTopbar}
+      descripcion={descripcionTopbar}
+    />
     <main class="page-content">
       {#if ruta.pagina === "dashboard"}
         <Dashboard onVerDetalle={abrirDetalle} />

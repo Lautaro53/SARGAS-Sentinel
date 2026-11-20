@@ -106,31 +106,33 @@
   </p>
 
   <form onsubmit={guardar}>
-    <div class="field">
-      <label for="nombre-servicio">Nombre</label>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombre-servicio">Nombre</label>
 
-      <input
-        id="nombre-servicio"
-        type="text"
-        maxlength="120"
-        placeholder="API principal"
-        bind:value={nombre}
-        required
-        disabled={enviando}
-      />
-    </div>
+        <input
+          id="nombre-servicio"
+          type="text"
+          maxlength="120"
+          placeholder="API principal"
+          bind:value={nombre}
+          required
+          disabled={enviando}
+        />
+      </div>
 
-    <div class="field">
-      <label for="url-servicio">URL</label>
+      <div class="field">
+        <label for="url-servicio">URL</label>
 
-      <input
-        id="url-servicio"
-        type="url"
-        placeholder="https://example.com"
-        bind:value={direccion}
-        required
-        disabled={enviando}
-      />
+        <input
+          id="url-servicio"
+          type="url"
+          placeholder="https://example.com"
+          bind:value={direccion}
+          required
+          disabled={enviando}
+        />
+      </div>
     </div>
 
     <div class="field-row">
@@ -192,11 +194,13 @@
 
 <style>
   .form-panel {
-    margin-top: 20px;
-    padding: 24px;
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding: 20px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-card);
     background: var(--color-surface);
+    scroll-margin-top: 88px;
   }
 
   h2 {
@@ -212,14 +216,14 @@
 
   form {
     display: grid;
-    gap: 18px;
-    margin-top: 24px;
+    gap: 14px;
+    margin-top: 16px;
   }
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
   }
 
@@ -230,26 +234,33 @@
 
   input {
     width: 100%;
-    padding: 12px;
+    min-height: 40px;
+    padding: 9px 12px;
     color: var(--color-text);
     background: var(--color-background);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     font: inherit;
+    font-size: 13px;
   }
 
-  input:focus-visible,
+  input:focus,
+  input:focus-visible {
+    outline: none;
+    border-color: var(--color-primary-hover);
+    box-shadow: 0 0 0 1px rgba(0, 102, 255, 0.2);
+  }
+
   button:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 
   .field-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
   }
-
   .hint {
     margin: 0;
   }
@@ -267,13 +278,20 @@
   }
 
   button {
-    padding: 11px 16px;
-    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: var(--radius-control);
     border: 1px solid var(--color-border);
     cursor: pointer;
     font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
   }
-
   button.primary {
     background: var(--color-primary);
     border-color: var(--color-primary);
@@ -288,6 +306,17 @@
   button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 700px) {
+    .field-row {
+      grid-template-columns: 1fr;
+    }
+
+    .form-panel {
+      padding: 16px;
+      scroll-margin-top: 76px;
+    }
   }
 
   @media (max-width: 520px) {
