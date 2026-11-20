@@ -1,6 +1,7 @@
 <script lang="ts">
   import { crearServicio, actualizarServicio } from "../api/servicios";
   import type { Servicio } from "../types/servicio";
+  import Button from "./ui/Button.svelte";
 
   type Props = {
     servicio?: Servicio | null;
@@ -172,22 +173,17 @@
     {/if}
 
     <div class="actions">
-      <button
-        type="button"
-        class="secondary"
-        onclick={onCancelar}
-        disabled={enviando}
-      >
+      <Button type="button" variant="secondary" disabled={enviando} onClick={onCancelar}>
         Cancelar
-      </button>
+      </Button>
 
-      <button type="submit" class="primary" disabled={enviando}>
+      <Button type="submit" variant="primary" loading={enviando}>
         {enviando
           ? "Guardando..."
           : servicio
             ? "Guardar cambios"
             : "Registrar servicio"}
-      </button>
+      </Button>
     </div>
   </form>
 </section>
@@ -251,11 +247,6 @@
     box-shadow: 0 0 0 1px rgba(0, 102, 255, 0.2);
   }
 
-  button:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
-  }
-
   .field-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -275,37 +266,6 @@
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 10px;
-  }
-
-  button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 14px;
-    border-radius: var(--radius-control);
-    border: 1px solid var(--color-border);
-    cursor: pointer;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  button.primary {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: white;
-  }
-
-  button.secondary {
-    background: transparent;
-    color: var(--color-text);
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   @media (max-width: 700px) {

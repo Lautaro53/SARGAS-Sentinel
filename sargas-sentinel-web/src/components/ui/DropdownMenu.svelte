@@ -1,4 +1,4 @@
-<script lang="ts" generics="T extends string">
+<script lang="ts" generics="T extends string | number">
     import { tick } from "svelte";
     import type { Snippet } from "svelte";
     import { Check, ChevronDown } from "@lucide/svelte";
@@ -150,6 +150,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 10px;
+        min-width: 125px;
         min-height: 40px;
         padding: 0 12px;
         border: 1px solid var(--color-border);

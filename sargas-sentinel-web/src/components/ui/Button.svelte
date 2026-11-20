@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
 
-    type Variante = "primary" | "secondary" | "danger" | "ghost";
+    type Variante = "primary" | "secondary" | "accent" | "danger" | "ghost";
     type Tamano = "sm" | "md";
 
     type Props = {
@@ -11,6 +11,10 @@
         type?: "button" | "submit" | "reset";
         disabled?: boolean;
         loading?: boolean;
+        iconOnly?: boolean;
+        ariaExpanded?: boolean;
+        ariaControls?: string;
+        ariaBusy?: boolean;
         title?: string;
         ariaLabel?: string;
         onClick?: (evento: MouseEvent) => void;
@@ -23,6 +27,10 @@
         type = "button",
         disabled = false,
         loading = false,
+        iconOnly = false,
+        ariaExpanded,
+        ariaControls,
+        ariaBusy = false,
         title,
         ariaLabel,
         onClick,
@@ -34,11 +42,15 @@
     class="button"
     class:primary={variant === "primary"}
     class:secondary={variant === "secondary"}
+    class:accent={variant === "accent"}
+    class:icon-only={iconOnly}
     class:danger={variant === "danger"}
     class:ghost={variant === "ghost"}
     class:small={size === "sm"}
     disabled={disabled || loading}
-    aria-busy={loading}
+    aria-busy={loading || ariaBusy}
+    aria-expanded={ariaExpanded}
+    aria-controls={ariaControls}
     aria-label={ariaLabel}
     {title}
     onclick={onClick}
@@ -46,7 +58,9 @@
     {#if loading}
         <span class="spinner" aria-hidden="true"></span>
     {/if}
-    {@render children()}
+    {#if !loading || !iconOnly}
+        {@render children()}
+    {/if}
 </button>
 
 <style>
@@ -75,6 +89,14 @@
         font-size: 12px;
     }
 
+    .button.icon-only {
+        width: 34px;
+        min-height: 34px;
+        padding: 0;
+    }
+
+    .button.accent { color: var(--color-primary-hover); }
+
     .button.primary {
         border-color: var(--color-primary);
         background: var(--color-primary);
@@ -86,6 +108,7 @@
         border-color: var(--color-primary-hover);
     }
 
+    .button.accent:hover:not(:disabled),
     .button.secondary:hover:not(:disabled),
     .button.ghost:hover:not(:disabled) {
         background: var(--color-surface-elevated);

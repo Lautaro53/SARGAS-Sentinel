@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Comprobacion } from "../types/comprobacion";
+    import DropdownMenu from "./ui/DropdownMenu.svelte";
 
     type Cantidad = 20 | 50 | 100;
 
@@ -18,6 +19,12 @@
     }: Props = $props();
 
     let puntoActivo = $state<number | null>(null);
+
+    const opcionesCantidad: { value: Cantidad; label: string }[] = [
+        { value: 20, label: "Últimas 20" },
+        { value: 50, label: "Últimas 50" },
+        { value: 100, label: "Últimas 100" },
+    ];
 
     const IZQUIERDA = 64;
     const DERECHA = 708;
@@ -98,21 +105,18 @@
             <h2>Evolución de latencia</h2>
             <p>Tiempo de respuesta HTTP · datos reales</p>
         </div>
-        <label class="range-picker">
+        <div class="range-picker">
             <span>Mostrar</span>
-            <select
+            <DropdownMenu
+                label="Cantidad de comprobaciones a graficar"
                 value={cantidad}
-                onchange={(evento) => {
+                options={opcionesCantidad}
+                onChange={(valor) => {
                     puntoActivo = null;
-                    onCambiarCantidad(Number(evento.currentTarget.value) as Cantidad);
+                    onCambiarCantidad(valor);
                 }}
-                aria-label="Cantidad de comprobaciones a graficar"
-            >
-                <option value={20}>Últimas 20</option>
-                <option value={50}>Últimas 50</option>
-                <option value={100}>Últimas 100</option>
-            </select>
-        </label>
+            />
+        </div>
     </header>
 
     <div class="graph-legend">
@@ -226,8 +230,6 @@
     .graph-header h2 { margin: 0 0 4px; font-size: 16px; }
     .graph-header p { margin: 0; color: var(--color-muted); font-size: 12px; }
     .range-picker { display: flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 12px; }
-    .range-picker select { min-height: 36px; padding: 7px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-elevated); color: var(--color-text); font: inherit; font-size: 12px; cursor: pointer; }
-    .range-picker select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
     .graph-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0 6px; color: var(--color-muted); font-size: 12px; }
     .graph-legend span { display: inline-flex; align-items: center; gap: 7px; }
     .legend-line { width: 17px; height: 3px; background: var(--color-primary-hover); border-radius: 3px; }
