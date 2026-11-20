@@ -13,8 +13,6 @@
 
     import { obtenerTodosIncidentes } from "../api/incidentes";
 
-    import { Globe } from "@lucide/svelte";
-
     import CheckHistory from "../components/CheckHistory.svelte";
     import { obtenerComprobaciones } from "../api/comprobaciones";
     import type { Comprobacion } from "../types/comprobacion";
@@ -593,6 +591,7 @@
 <style>
     .metrics-section {
         margin-top: var(--space-2);
+        min-width: 0;
     }
 
     .demo-note {
@@ -608,23 +607,9 @@
     }
 
     .dashboard {
-        display: block;
-        min-width: 0;
-    }
-
-    .metrics-section {
-        grid-column: 1 / -1;
-        min-width: 0;
-    }
-
-    .dashboard {
         display: flex;
         flex-direction: column;
         gap: var(--space-4);
-        min-width: 0;
-    }
-
-    .metrics-section {
         min-width: 0;
     }
 
@@ -641,45 +626,9 @@
         color: var(--color-down) !important;
     }
 
-    .panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-    }
-
     .panel-header h2 {
         margin: 0 0 var(--space-2);
-        font-size: 16px;
         line-height: 1.3;
-    }
-
-    .table-scroll {
-        overflow-x: auto;
-    }
-
-    table {
-        width: 100%;
-        min-width: 720px;
-        border-collapse: collapse;
-        text-align: left;
-    }
-
-    th {
-        background: var(--color-surface-elevated);
-        color: var(--color-muted);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    th {
-        padding: 10px 12px;
-    }
-
-    td {
-        padding: 10px 12px;
     }
 
     .monitor-status.paused {
@@ -710,8 +659,6 @@
 
     .sync-row .demo-note {
         margin: 0;
-        color: var(--color-muted);
-        font-size: 12px;
     }
 
     @media (max-width: 1200px) {
