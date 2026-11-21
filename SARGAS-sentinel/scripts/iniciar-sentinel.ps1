@@ -16,31 +16,52 @@ if (-not (Test-Path -LiteralPath $ejecutable -PathType Leaf)) {
     throw "No se encontro sentinel.exe en: $backend. Compilalo con: go build -o .\sentinel.exe .\cmd\sentinel"
 }
 
-New-Item -ItemType Directory -Path $carpetaPrivada -Force | Out-Null
+# Si ya existe DATABASE_URL, utilizarla sin solicitar ni reemplazar credenciales.
+# En modo local, SARGAS_DB_PORT permite cambiar el puerto PostgreSQL (por defecto 5432).
+$dsnExterna = -not [string]::IsNullOrWhiteSpace($env:DATABASE_URL)
+
+if ($dsnExterna -and $ActualizarClave) {
+    throw 'Con DATABASE_URL configurada, -ActualizarClave no aplica. La credencial local no se utiliza.'
+}
 
 try {
-    if ($ActualizarClave -or -not (Test-Path -LiteralPath $archivoCredencial)) {
-        Write-Host 'Ingresa la contrasena ACTUAL de PostgreSQL para sentinel_app.'
-        $credencial = Get-Credential -UserName 'sentinel_app' -Message 'Clave de PostgreSQL de SARGAS Sentinel'
-        if ($null -eq $credencial) {
-            throw 'Se cancelo el ingreso de credenciales.'
+    if (-not $dsnExterna) {
+        New-Item -ItemType Directory -Path $carpetaPrivada -Force | Out-Null
+
+        if ($ActualizarClave -or -not (Test-Path -LiteralPath $archivoCredencial)) {
+            Write-Host 'Ingresa la contrasena ACTUAL de PostgreSQL para sentinel_app.'
+            $credencial = Get-Credential -UserName 'sentinel_app' -Message 'Clave de PostgreSQL de SARGAS Sentinel'
+            if ($null -eq $credencial) {
+                throw 'Se cancelo el ingreso de credenciales.'
+            }
+            if ($credencial.UserName -ne 'sentinel_app') {
+                throw 'El usuario debe ser sentinel_app.'
+            }
+            $credencial | Export-Clixml -LiteralPath $archivoCredencial
+            Write-Host 'Credencial guardada de forma cifrada fuera del proyecto.'
         }
-        if ($credencial.UserName -ne 'sentinel_app') {
-            throw 'El usuario debe ser sentinel_app.'
+        else {
+            $credencial = Import-Clixml -LiteralPath $archivoCredencial
+            if ($credencial -isnot [System.Management.Automation.PSCredential] -or
+                $credencial.UserName -ne 'sentinel_app') {
+                throw 'El archivo de credenciales no corresponde a sentinel_app. Reintenta con -ActualizarClave.'
+            }
         }
-        $credencial | Export-Clixml -LiteralPath $archivoCredencial
-        Write-Host 'Credencial guardada de forma cifrada fuera del proyecto.'
+
+        $puertoBD = 5432
+        if (-not [string]::IsNullOrWhiteSpace($env:SARGAS_DB_PORT)) {
+            if (-not [int]::TryParse($env:SARGAS_DB_PORT, [ref]$puertoBD) -or
+                $puertoBD -lt 1 -or $puertoBD -gt 65535) {
+                throw 'SARGAS_DB_PORT debe ser un puerto valido entre 1 y 65535.'
+            }
+        }
+
+        $claveCodificada = [uri]::EscapeDataString($credencial.GetNetworkCredential().Password)
+        $env:DATABASE_URL = "postgres://sentinel_app:$($claveCodificada)@127.0.0.1:$puertoBD/sargas_sentinel?sslmode=disable"
     }
     else {
-        $credencial = Import-Clixml -LiteralPath $archivoCredencial
-        if ($credencial -isnot [System.Management.Automation.PSCredential] -or
-            $credencial.UserName -ne 'sentinel_app') {
-            throw 'El archivo de credenciales no corresponde a sentinel_app. Reintenta con -ActualizarClave.'
-        }
+        Write-Host 'Usando DATABASE_URL ya configurada (sin mostrar su contenido).'
     }
-
-    $claveCodificada = [uri]::EscapeDataString($credencial.GetNetworkCredential().Password)
-    $env:DATABASE_URL = "postgres://sentinel_app:$($claveCodificada)@127.0.0.1:5432/sargas_sentinel?sslmode=disable"
 
     Write-Host 'Iniciando SARGAS Sentinel... (Ctrl+C para detenerlo)'
     Push-Location $backend
@@ -55,6 +76,8 @@ try {
     }
 }
 finally {
-    Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
-    Remove-Variable credencial, claveCodificada -ErrorAction SilentlyContinue
+    if (-not $dsnExterna) {
+        Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+    }
+    Remove-Variable credencial, claveCodificada, puertoBD -ErrorAction SilentlyContinue
 }

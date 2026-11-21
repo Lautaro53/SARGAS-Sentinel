@@ -57,12 +57,12 @@ New-Item -ItemType Directory -Path $destino -Force |
 Copy-Item -Path "$origen\*" -Destination $destino `
     -Recurse -Force
 
-# 3. Compilar ejecutable Go
+# 3. Verificar y compilar Go, sin ejecutar pruebas integradas
 Push-Location $backend
 try {
-    & go test -count=1 ./...
+    & go vet ./...
     if ($LASTEXITCODE -ne 0) {
-        throw "Fallaron las pruebas del backend."
+        throw "Fallaron las verificaciones estaticas de Go."
     }
 
     & go build -o $ejecutable ./cmd/sentinel
@@ -73,9 +73,3 @@ try {
 finally {
     Pop-Location
 }
-
-Write-Host ""
-Write-Host "SARGAS Sentinel compilado correctamente." `
-    -ForegroundColor Green
-Write-Host "Ejecutable: $ejecutable"
-Write-Host "No se modifico sentinel.exe."

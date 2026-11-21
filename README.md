@@ -10,7 +10,7 @@ Desarrollado principalmente en **Go**, utiliza una arquitectura modular que sepa
 
 SARGAS busca ofrecer una solución ligera, confiable y extensible, orientada a desarrolladores y pequeños entornos de infraestructura.
 
-**Versión:** `v1.1.6` · **Licencia:** MIT
+**Versión:** `v1.2.0` · **Licencia:** MIT
 
 ---
 
@@ -73,6 +73,21 @@ Los siguientes comandos se ejecutan desde la carpeta principal del proyecto:
 | Detener servicios | `.\administrar.cmd detener` |
 
 Los datos de PostgreSQL se conservan en un volumen persistente. Las credenciales se almacenan fuera del repositorio.
+
+### Operaciones de desarrollo 
+
+Los siguientes comandos permiten compilar, ejecutar y administrar SARGAS Sentinel desde la raíz del repositorio.
+
+| Operación local | Comando desde la raíz |
+|---|---|
+| Ver acciones disponibles | `.\sargas.ps1 ayuda` |
+| Compilar frontend y backend | `.\sargas.ps1 compilar` |
+| Iniciar el ejecutable instalado | `.\sargas.ps1 iniciar` |
+| Instalar el ejecutable ya compilado, con respaldo | `.\sargas.ps1 actualizar` |
+| Compilar e instalar, con respaldo | `.\sargas.ps1 actualizar -Compilar` |
+| Validar una candidata a release | `.\sargas.ps1 validar` |
+| Consultar contenedores y registros | `.\sargas.ps1 docker-estado` / `.\sargas.ps1 docker-logs` |
+| Consultar cambios y commits locales | `.\sargas.ps1 git-estado` |
 
 > **Seguridad:** SARGAS está diseñado para uso local o en entornos de confianza. La versión actual no incluye autenticación de usuarios y no debe exponerse directamente a Internet.
 

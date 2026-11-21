@@ -1,54 +1,74 @@
-
 # SARGAS Sentinel - Actualizacion local segura
+# Uso: .\scripts\actualizar-sentinel.ps1 [-Compilar]
+param([switch]$Compilar)
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
 $backend = Split-Path -Parent $PSScriptRoot
+$actual = Join-Path $backend 'sentinel.exe'
+$nuevo = Join-Path $backend 'sentinel-nuevo.exe'
 
-$actual = Join-Path $backend "sentinel.exe"
-$nuevo = Join-Path $backend "sentinel-nuevo.exe"
+if ($Compilar) {
+    $scriptCompilacion = Join-Path $PSScriptRoot 'compilar-sentinel.ps1'
+    if (-not (Test-Path -LiteralPath $scriptCompilacion -PathType Leaf)) {
+        throw 'No se encontro compilar-sentinel.ps1.'
+    }
+    & $scriptCompilacion
+}
 
-$fecha = Get-Date -Format "yyyyMMdd_HHmmss"
+if (-not (Test-Path -LiteralPath $nuevo -PathType Leaf)) {
+    throw 'No existe sentinel-nuevo.exe. Ejecuta primero compilar-sentinel.ps1 o utiliza -Compilar.'
+}
+if (-not (Test-Path -LiteralPath $actual -PathType Leaf)) {
+    throw 'No existe sentinel.exe. Esta herramienta solo actualiza instalaciones locales existentes.'
+}
+
+# No modificar el ejecutable mientras Sentinel esta en uso.
+if (Get-Process -Name sentinel -ErrorAction SilentlyContinue) {
+    throw 'Sentinel esta ejecutandose. Detenelo con Ctrl+C antes de actualizar.'
+}
+
+$hashAnterior = (Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash
+$hashNuevo = (Get-FileHash -LiteralPath $nuevo -Algorithm SHA256).Hash
+if ($hashAnterior -eq $hashNuevo) {
+    Write-Host 'El ejecutable instalado ya coincide con sentinel-nuevo.exe. No se realizaron cambios.' -ForegroundColor Green
+    return
+}
+
+$fecha = Get-Date -Format 'yyyyMMdd_HHmmss_fff'
 $respaldo = Join-Path $backend "sentinel-backup-$fecha.exe"
-
-# Verificar archivos
-if (-not (Test-Path -LiteralPath $nuevo)) {
-    throw "No existe sentinel-nuevo.exe. Ejecuta primero compilar-sentinel.ps1."
+if (Test-Path -LiteralPath $respaldo) {
+    throw 'Ya existe un respaldo con ese nombre. No se reemplazara.'
 }
 
-if (-not (Test-Path -LiteralPath $actual)) {
-    throw "No existe sentinel.exe."
+# El respaldo debe estar verificado antes de modificar el ejecutable instalado.
+Copy-Item -LiteralPath $actual -Destination $respaldo -ErrorAction Stop
+if ((Get-FileHash -LiteralPath $respaldo -Algorithm SHA256).Hash -ne $hashAnterior) {
+    throw "El respaldo no paso la verificacion de integridad: $respaldo"
 }
-
-# No reemplazar ejecutables en uso
-$proceso = Get-Process -Name sentinel -ErrorAction SilentlyContinue
-
-if ($proceso) {
-    throw "Sentinel esta ejecutandose. Detenelo con Ctrl+C antes de actualizar."
-}
-
-# Conservar version anterior
-Copy-Item -LiteralPath $actual -Destination $respaldo
 
 try {
-    # Instalar nuevo ejecutable
-    Copy-Item -LiteralPath $nuevo -Destination $actual -Force
-
-    # Verificar integridad de la copia
-    $hashNuevo = (Get-FileHash -LiteralPath $nuevo -Algorithm SHA256).Hash
-    $hashActual = (Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash
-
-    if ($hashNuevo -ne $hashActual) {
-        throw "La copia del ejecutable no coincide con el original."
+    Copy-Item -LiteralPath $nuevo -Destination $actual -Force -ErrorAction Stop
+    if ((Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash -ne $hashNuevo) {
+        throw 'La copia del ejecutable nuevo no coincide con el original.'
     }
 }
 catch {
-    Copy-Item -LiteralPath $respaldo -Destination $actual -Force
-    throw "La actualizacion fallo. Se intento restaurar el ejecutable anterior. Detalle: $_"
+    $errorActualizacion = $_
+    try {
+        Copy-Item -LiteralPath $respaldo -Destination $actual -Force -ErrorAction Stop
+        if ((Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash -ne $hashAnterior) {
+            throw 'La restauracion no coincide con el ejecutable anterior.'
+        }
+    }
+    catch {
+        throw "Fallo la actualizacion y no se pudo verificar la restauracion. Respaldo: $respaldo. Detalle: $_"
+    }
+    throw "Fallo la actualizacion. Se restauro el ejecutable anterior. Detalle: $errorActualizacion"
 }
 
-Write-Host ""
-Write-Host "SARGAS Sentinel actualizado correctamente." -ForegroundColor Green
+Write-Host ''
+Write-Host 'SARGAS Sentinel actualizado correctamente.' -ForegroundColor Green
 Write-Host "Respaldo: $respaldo"
 Write-Host "Ejecutable: $actual"
-Write-Host "Inicia Sentinel y verifica su funcionamiento."
+Write-Host 'Inicia Sentinel y verifica su funcionamiento.'
