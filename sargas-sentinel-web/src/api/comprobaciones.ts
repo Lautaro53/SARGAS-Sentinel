@@ -2,7 +2,7 @@
 import type { Comprobacion } from '../types/comprobacion'
 
 
-function esComprobacion(
+export function esComprobacion(
   valor: unknown
 ): valor is Comprobacion {
   if (
@@ -52,15 +52,20 @@ function esComprobacion(
 export async function obtenerComprobaciones(
   servicioId: number,
   limite: number = 20,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  offset: number = 0
 ): Promise<Comprobacion[]> {
 
   if (!Number.isInteger(limite) || limite < 1 || limite > 100) {
     throw new Error('El límite debe estar entre 1 y 100')
   }
 
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new Error('El offset debe ser un entero no negativo')
+  }
+
   const respuesta = await fetch(
-    `/api/servicios/${servicioId}/comprobaciones?limite=${limite}&offset=0`,
+    `/api/servicios/${servicioId}/comprobaciones?limite=${limite}&offset=${offset}`,
     { signal }
   )
 

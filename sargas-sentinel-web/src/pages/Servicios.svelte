@@ -10,14 +10,21 @@
 
     import ServicioForm from "../components/ServicioForm.svelte";
 
-    import { SlidersHorizontal, ArrowUpDown, Plus, SquarePen, Pause, Play, Archive } from "@lucide/svelte";
+    import {
+        SlidersHorizontal,
+        ArrowUpDown,
+        Plus,
+        SquarePen,
+        Pause,
+        Play,
+        Archive,
+    } from "@lucide/svelte";
     import Button from "../components/ui/Button.svelte";
     import DropdownMenu from "../components/ui/DropdownMenu.svelte";
     import SearchField from "../components/ui/SearchField.svelte";
 
     import Paginacion from "../components/Paginacion.svelte";
     import ServicioIdentidad from "../components/ServicioIdentidad.svelte";
-
 
     let servicios = $state<Servicio[]>([]);
     let cargando = $state(true);
@@ -27,6 +34,25 @@
     let confirmacion = $state("");
     let servicioProcesando = $state<number | null>(null);
     let errorAccion = $state("");
+    $effect(() => {
+        if (!confirmacion) return;
+
+        const temporizador = window.setTimeout(() => {
+            confirmacion = "";
+        }, 4000);
+
+        return () => window.clearTimeout(temporizador);
+    });
+
+    $effect(() => {
+        if (!errorAccion) return;
+
+        const temporizador = window.setTimeout(() => {
+            errorAccion = "";
+        }, 6000);
+
+        return () => window.clearTimeout(temporizador);
+    });
 
     let servicioEnEdicion = $state<Servicio | null>(null);
 
@@ -65,6 +91,17 @@
 
     let ordenServicios = $state<OrdenServicios>("nombre-asc");
 
+    const CLAVE_FILTRO = "sargas.servicios.filtro";
+    const CLAVE_ORDEN = "sargas.servicios.orden";
+
+    function guardarPreferencia(clave: string, valor: string) {
+        try {
+            localStorage.setItem(clave, valor);
+        } catch {
+            // La pantalla sigue funcionando cuando el almacenamiento no está disponible.
+        }
+    }
+
     const opcionesFiltro: { value: FiltroMonitoreo; label: string }[] = [
         { value: "todos", label: "Todos" },
         { value: "activos", label: "Activos" },
@@ -74,6 +111,7 @@
     function seleccionarFiltro(valor: FiltroMonitoreo) {
         filtroMonitoreo = valor;
         paginaServicios = 1;
+        guardarPreferencia(CLAVE_FILTRO, valor);
     }
 
     const opcionesOrden: { value: OrdenServicios; label: string }[] = [
@@ -169,17 +207,12 @@
     function seleccionarOrden(valor: OrdenServicios) {
         ordenServicios = valor;
         paginaServicios = 1;
+        guardarPreferencia(CLAVE_ORDEN, valor);
     }
 
     let hayFiltros = $derived(
         busqueda.trim() !== "" || filtroMonitoreo !== "todos",
     );
-
-    function limpiarFiltros() {
-        busqueda = "";
-        filtroMonitoreo = "todos";
-        paginaServicios = 1;
-    }
 
     type Props = {
         onVerDetalle: (servicio: Servicio) => void;
@@ -189,6 +222,17 @@
 
     onMount(() => {
         let activo = true;
+
+        try {
+            const filtroGuardado = localStorage.getItem(CLAVE_FILTRO);
+            const ordenGuardado = localStorage.getItem(CLAVE_ORDEN);
+            const filtroValido = opcionesFiltro.find((opcion) => opcion.value === filtroGuardado);
+            const ordenValido = opcionesOrden.find((opcion) => opcion.value === ordenGuardado);
+            if (filtroValido) filtroMonitoreo = filtroValido.value;
+            if (ordenValido) ordenServicios = ordenValido.value;
+        } catch {
+            // Se utilizan los valores predeterminados si el navegador bloquea el almacenamiento.
+        }
 
         async function cargarServicios() {
             try {
@@ -373,7 +417,11 @@
         <ArrowUpDown size={17} aria-hidden="true" />
     {/snippet}
 
-    <div class="services-toolbar" role="search" aria-label="Buscar y organizar servicios">
+    <div
+        class="services-toolbar"
+        role="search"
+        aria-label="Buscar y organizar servicios"
+    >
         <div class="search-container">
             <SearchField
                 id="buscar-servicios"
@@ -387,16 +435,15 @@
             />
         </div>
 
-        <DropdownMenu
-            label="Filtrar servicios"
-            value={filtroMonitoreo}
-            options={opcionesFiltro}
-            onChange={seleccionarFiltro}
-            icon={filtroIcono}
-            showClear={hayFiltros}
-            onClear={limpiarFiltros}
-            clearLabel="Limpiar filtros"
-        />
+        <div class="monitor-filter">
+            <DropdownMenu
+                label="Filtrar servicios"
+                value={filtroMonitoreo}
+                options={opcionesFiltro}
+                onChange={seleccionarFiltro}
+                icon={filtroIcono}
+            />
+        </div>
 
         <DropdownMenu
             label="Ordenar servicios"
@@ -449,9 +496,7 @@
         {:else if serviciosFiltrados.length === 0}
             <div class="empty-results">
                 <p>No se encontraron servicios con esos criterios.</p>
-                <button type="button" onclick={limpiarFiltros}>
-                    Limpiar filtros
-                </button>
+                <p>Probá con otra búsqueda o seleccioná «Todos».</p>
             </div>
         {:else}
             <div class="table-scroll">
@@ -506,26 +551,41 @@
                                             iconOnly
                                             title={`Editar ${servicio.nombre}`}
                                             ariaLabel={`Editar servicio ${servicio.nombre}`}
-                                            onClick={() => iniciarEdicion(servicio)}
+                                            onClick={() =>
+                                                iniciarEdicion(servicio)}
                                         >
-                                            <SquarePen size={16} aria-hidden="true" />
+                                            <SquarePen
+                                                size={16}
+                                                aria-hidden="true"
+                                            />
                                         </Button>
 
                                         <Button
                                             size="sm"
                                             iconOnly
-                                            disabled={servicioProcesando !== null}
-                                            loading={servicioProcesando === servicio.id}
+                                            disabled={servicioProcesando !==
+                                                null}
+                                            loading={servicioProcesando ===
+                                                servicio.id}
                                             title={servicio.habilitado
                                                 ? `Pausar monitoreo de ${servicio.nombre}`
                                                 : `Reanudar monitoreo de ${servicio.nombre}`}
                                             ariaLabel={`${servicio.habilitado ? "Pausar" : "Reanudar"} el monitoreo de ${servicio.nombre}`}
-                                            onClick={() => void alternarMonitoreo(servicio)}
+                                            onClick={() =>
+                                                void alternarMonitoreo(
+                                                    servicio,
+                                                )}
                                         >
                                             {#if servicio.habilitado}
-                                                <Pause size={16} aria-hidden="true" />
+                                                <Pause
+                                                    size={16}
+                                                    aria-hidden="true"
+                                                />
                                             {:else}
-                                                <Play size={16} aria-hidden="true" />
+                                                <Play
+                                                    size={16}
+                                                    aria-hidden="true"
+                                                />
                                             {/if}
                                         </Button>
 
@@ -533,13 +593,21 @@
                                             variant="danger"
                                             size="sm"
                                             iconOnly
-                                            disabled={servicioProcesando !== null}
-                                            loading={servicioProcesando === servicio.id}
+                                            disabled={servicioProcesando !==
+                                                null}
+                                            loading={servicioProcesando ===
+                                                servicio.id}
                                             title={`Archivar ${servicio.nombre}`}
                                             ariaLabel={`Archivar servicio ${servicio.nombre}`}
-                                            onClick={() => void archivarDesdeLista(servicio)}
+                                            onClick={() =>
+                                                void archivarDesdeLista(
+                                                    servicio,
+                                                )}
                                         >
-                                            <Archive size={16} aria-hidden="true" />
+                                            <Archive
+                                                size={16}
+                                                aria-hidden="true"
+                                            />
                                         </Button>
                                     </div>
                                 </td>
@@ -558,7 +626,9 @@
 </div>
 
 <style>
-    .services-panel { margin-top: 0; }
+    .services-panel {
+        margin-top: 0;
+    }
 
     .services-toolbar {
         display: flex;
@@ -573,7 +643,12 @@
         min-width: 0;
     }
 
-    .create-container { flex: 0 0 auto; }
+    .monitor-filter { width: 146px; flex: 0 0 146px; }
+    .monitor-filter :global(.dropdown .trigger) { width: 100%; }
+
+    .create-container {
+        flex: 0 0 auto;
+    }
 
     .row-actions {
         display: flex;
@@ -582,8 +657,13 @@
         gap: 8px;
     }
 
-    .monitor-status { color: var(--color-up); font-weight: 500; }
-    .monitor-status.paused { color: var(--color-muted); }
+    .monitor-status {
+        color: var(--color-up);
+        font-weight: 500;
+    }
+    .monitor-status.paused {
+        color: var(--color-muted);
+    }
 
     .message {
         margin: 0;
@@ -591,9 +671,19 @@
         color: var(--color-muted);
     }
 
-    .message.error, .action-error { color: var(--color-down); }
-    .confirmation { margin: 16px 0; color: var(--color-up); font-size: 13px; }
-    .action-error { margin: 16px 0; font-size: 13px; }
+    .message.error,
+    .action-error {
+        color: var(--color-down);
+    }
+    .confirmation {
+        margin: 16px 0;
+        color: var(--color-up);
+        font-size: 13px;
+    }
+    .action-error {
+        margin: 16px 0;
+        font-size: 13px;
+    }
 
     .empty-results {
         padding: 24px 16px;
@@ -602,23 +692,52 @@
         font-size: 13px;
     }
 
-    .empty-results button {
-        padding: 7px 12px;
+    .confirmation,
+    .action-error {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 100;
+        max-width: min(420px, calc(100vw - 32px));
+        margin: 0;
+        padding: 12px 16px;
         border: 1px solid var(--color-border);
         border-radius: var(--radius-control);
         background: var(--color-surface-elevated);
-        color: var(--color-text);
-        cursor: pointer;
+        box-shadow: var(--shadow-card);
+        font-size: 13px;
+        line-height: 1.5;
     }
 
-    .empty-results button:focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 2px;
+    .confirmation {
+        color: var(--color-up);
+        border-left: 3px solid var(--color-up);
+    }
+
+    .action-error {
+        color: var(--color-down);
+        border-left: 3px solid var(--color-down);
+    }
+
+    @media (max-width: 480px) {
+        .confirmation,
+        .action-error {
+            right: 16px;
+            bottom: 16px;
+            left: 16px;
+            max-width: none;
+        }
     }
 
     @media (max-width: 760px) {
-        .search-container { flex-basis: 100%; }
-        .create-container { flex: 1 1 auto; }
-        .create-container :global(button) { width: 100%; }
+        .search-container {
+            flex-basis: 100%;
+        }
+        .create-container {
+            flex: 1 1 auto;
+        }
+        .create-container :global(button) {
+            width: 100%;
+        }
     }
 </style>

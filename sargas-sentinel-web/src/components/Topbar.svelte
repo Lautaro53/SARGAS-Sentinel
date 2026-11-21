@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Moon, Menu } from "@lucide/svelte";
+  import { Moon, Sun, Menu } from "@lucide/svelte";
   import { obtenerServicios } from "../api/servicios";
 
   type EstadoConexion = "comprobando" | "conectado" | "desconectado";
@@ -10,9 +10,11 @@
     alternarMenu: () => void;
     titulo: string;
     descripcion: string;
+    tema: "neon-blue" | "neon-blue-light";
+    alternarTema: () => void;
   };
 
-  let { menuAbierto, alternarMenu, titulo, descripcion }: Props = $props();
+  let { menuAbierto, alternarMenu, titulo, descripcion, tema, alternarTema }: Props = $props();
 
   let estadoConexion = $state<EstadoConexion>("comprobando");
   let horaLocal = $state("");
@@ -121,13 +123,20 @@
       <small>Hora local</small>
     </div>
 
-    <div
-      class="theme-placeholder"
-      title="Cambio de tema disponible próximamente"
-      aria-label="Cambio de tema disponible próximamente"
+    <button
+      type="button"
+      class="theme-toggle"
+      title={tema === "neon-blue" ? "Activar tema claro" : "Activar tema oscuro"}
+      aria-label={tema === "neon-blue" ? "Activar tema claro" : "Activar tema oscuro"}
+      aria-pressed={tema === "neon-blue-light"}
+      onclick={alternarTema}
     >
-      <Moon size={19} strokeWidth={1.8} aria-hidden="true" />
-    </div>
+      {#if tema === "neon-blue"}
+        <Sun size={19} strokeWidth={1.8} aria-hidden="true" />
+      {:else}
+        <Moon size={19} strokeWidth={1.8} aria-hidden="true" />
+      {/if}
+    </button>
   </div>
 </header>
 
@@ -235,7 +244,7 @@
     background: var(--color-border);
   }
 
-  .theme-placeholder {
+  .theme-toggle {
     width: 36px;
     height: 36px;
     display: flex;
@@ -247,7 +256,17 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-control);
 
-    cursor: default;
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--color-primary-hover);
+    color: var(--color-primary-hover);
+  }
+
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
   }
 
   .menu-button {

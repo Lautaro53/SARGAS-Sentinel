@@ -149,6 +149,16 @@ func NewHandler(
 		archivarServicio(w, r, repo, manager)
 	})
 
+	mux.HandleFunc("GET /servicios/{id}/comprobaciones/consulta", func(w http.ResponseWriter, r *http.Request) {
+		consultarHistorialComprobaciones(w, r, comprobacionRepo)
+	})
+	mux.HandleFunc("GET /servicios/{id}/incidentes/consulta", func(w http.ResponseWriter, r *http.Request) {
+		consultarHistorialIncidentes(w, r, consultaRepo, false)
+	})
+	mux.HandleFunc("GET /incidentes/consulta", func(w http.ResponseWriter, r *http.Request) {
+		consultarHistorialIncidentes(w, r, consultaRepo, true)
+	})
+
 	mux.HandleFunc("GET /servicios/{id}/comprobaciones", func(
 		w http.ResponseWriter,
 		r *http.Request,

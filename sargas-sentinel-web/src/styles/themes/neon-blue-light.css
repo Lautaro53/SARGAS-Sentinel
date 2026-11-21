@@ -1,0 +1,27 @@
+:root[data-theme="neon-blue-light"] {
+  color-scheme: light;
+
+  --color-background: #F4F7FB;
+  --color-sidebar: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: #EAF0F7;
+  --color-border: #D0DCE9;
+
+  --color-primary: #0066FF;
+  --color-primary-hover: #0056D6;
+  --color-on-primary: #FFFFFF;
+
+  --color-text: #162234;
+  --color-muted: #526478;
+
+  --color-up: #078547;
+  --color-down: #CF3045;
+  --color-unknown: #63758A;
+  --color-warning: #946100;
+
+  --color-focus: #0066FF;
+  --shadow-card: 0 3px 12px rgba(19, 43, 76, 0.08);
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+}

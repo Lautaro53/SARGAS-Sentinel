@@ -61,7 +61,7 @@ function esIncidente(valor: unknown): valor is Incidente {
   )
 }
 
-function validarIncidentes(
+export function validarIncidentes(
   datos: unknown,
   servicioId?: number
 ): Incidente[] {
@@ -93,10 +93,20 @@ function validarIncidentes(
 
 
 export async function obtenerIncidentes(
-  servicioId: number
+  servicioId: number,
+  limite: number = 10,
+  offset: number = 0,
+  signal?: AbortSignal
 ): Promise<Incidente[]> {
+  if (!Number.isSafeInteger(limite) || limite < 1 || limite > 100) {
+    throw new Error('El límite debe estar entre 1 y 100')
+  }
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new Error('El offset debe ser un entero no negativo')
+  }
   const respuesta = await fetch(
-    `/api/servicios/${servicioId}/incidentes?limite=10&offset=0`
+    `/api/servicios/${servicioId}/incidentes?limite=${limite}&offset=${offset}`,
+    { signal }
   );
 
   if (!respuesta.ok) {

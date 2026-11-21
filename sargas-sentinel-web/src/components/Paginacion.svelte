@@ -3,24 +3,30 @@
         pagina: number;
         totalPaginas: number;
         onCambiarPagina: (pagina: number) => void;
+        etiqueta?: string;
+        haySiguiente?: boolean;
+        deshabilitado?: boolean;
     };
 
     let {
         pagina,
         totalPaginas,
-        onCambiarPagina
+        onCambiarPagina,
+        etiqueta = "servicios",
+        haySiguiente = undefined,
+        deshabilitado = false
     }: Props = $props();
 </script>
 
-<nav class="pagination" aria-label="Paginación de servicios">
+<nav class="pagination" aria-label={`Paginación de ${etiqueta}`}>
     <span class="pagination-info">
-        Página {pagina} de {totalPaginas}
+        Página {pagina}{haySiguiente === undefined ? ` de ${totalPaginas}` : ""}
     </span>
 
     <div class="pagination-actions">
         <button
             type="button"
-            disabled={pagina <= 1}
+            disabled={deshabilitado || pagina <= 1}
             onclick={() => onCambiarPagina(pagina - 1)}
         >
             Anterior
@@ -28,7 +34,7 @@
 
         <button
             type="button"
-            disabled={pagina >= totalPaginas}
+            disabled={deshabilitado || (haySiguiente === undefined ? pagina >= totalPaginas : !haySiguiente)}
             onclick={() => onCambiarPagina(pagina + 1)}
         >
             Siguiente

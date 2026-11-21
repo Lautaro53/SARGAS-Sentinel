@@ -49,18 +49,16 @@
     let fechaIncidentes = $state<Date | null>(null);
 
     let disponibles = $derived(
-        estados.filter((s) => s.habilitado && s.estado === "UP").length,
+        estados.filter((s) => s.estado === "UP").length,
     );
 
     let caidos = $derived(
-        estados.filter((s) => s.habilitado && s.estado === "DOWN").length,
+        estados.filter((s) => s.estado === "DOWN").length,
     );
 
     let desconocidos = $derived(
-        estados.filter((s) => s.habilitado && s.estado === "UNKNOWN").length,
+        estados.filter((s) => s.estado === "UNKNOWN").length,
     );
-
-    let deshabilitados = $derived(estados.filter((s) => !s.habilitado).length);
 
     const SERVICIOS_POR_PAGINA = 10;
 
@@ -408,14 +406,15 @@
                     valor={servicios.length}
                 />
 
-                <MetricCard titulo="Estado UP" valor={disponibles} tono="up" />
+                <MetricCard titulo="Estado UP" valor={disponibles} tono="up" ayuda="Incluye servicios pausados" />
 
-                <MetricCard titulo="Estado DOWN" valor={caidos} tono="down" />
+                <MetricCard titulo="Estado DOWN" valor={caidos} tono="down" ayuda="Incluye servicios pausados" />
 
                 <MetricCard
                     titulo="Estado UNKNOWN"
                     valor={desconocidos}
                     tono="unknown"
+                    ayuda="Incluye servicios pausados"
                 />
 
                 {#if incidentesAbiertos !== null}
@@ -616,9 +615,9 @@
     .services-panel {
         min-width: 0;
         margin-top: 16px;
-        border: 1px solid #243245;
+        border: 1px solid var(--color-border);
         border-radius: var(--radius-card);
-        background: #141a22;
+        background: var(--color-surface);
         overflow: hidden;
     }
 

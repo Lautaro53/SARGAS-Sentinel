@@ -34,15 +34,25 @@
     const ALTO = ABAJO - ARRIBA;
 
     function esFallida(c: Comprobacion): boolean {
-        return c.error !== null || c.codigo_http === null ||
-            c.codigo_http < 200 || c.codigo_http >= 300;
+        return (
+            c.error !== null ||
+            c.codigo_http === null ||
+            c.codigo_http < 200 ||
+            c.codigo_http >= 300
+        );
     }
 
     function pasoLegible(valor: number): number {
         const potencia = 10 ** Math.floor(Math.log10(Math.max(valor, 0.001)));
         const normalizado = valor / potencia;
-        const factor = normalizado <= 1 ? 1 : normalizado <= 2 ? 2 :
-            normalizado <= 5 ? 5 : 10;
+        const factor =
+            normalizado <= 1
+                ? 1
+                : normalizado <= 2
+                  ? 2
+                  : normalizado <= 5
+                    ? 5
+                    : 10;
         return factor * potencia;
     }
 
@@ -50,53 +60,99 @@
         return valor.toLocaleString("es-UY", { maximumFractionDigits: 1 });
     }
 
-    function fechaBreve(valor: string): string {
-        return new Date(valor).toLocaleString("es-UY", {
-            day: "2-digit", month: "2-digit",
-            hour: "2-digit", minute: "2-digit", hour12: false,
+    function fechaEje(valor: string, mismoDia: boolean): string {
+        const fecha = new Date(valor);
+
+        if (mismoDia) {
+            return fecha.toLocaleTimeString("es-UY", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
+        }
+
+        return fecha.toLocaleString("es-UY", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
         });
     }
 
     let grafico = $derived.by(() => {
         const ordenadas = [...comprobaciones].sort(
-            (a, b) => Date.parse(a.comprobado_en) - Date.parse(b.comprobado_en) || a.id - b.id,
+            (a, b) =>
+                Date.parse(a.comprobado_en) - Date.parse(b.comprobado_en) ||
+                a.id - b.id,
         );
         const latencias = ordenadas.map((c) => c.latencia_ms);
         const maxima = Math.max(0, ...latencias);
         const minima = latencias.length > 0 ? Math.min(...latencias) : 0;
-        const promedio = latencias.length > 0
-            ? latencias.reduce((suma, valor) => suma + valor, 0) / latencias.length
-            : 0;
+        const promedio =
+            latencias.length > 0
+                ? latencias.reduce((suma, valor) => suma + valor, 0) /
+                  latencias.length
+                : 0;
         const paso = pasoLegible(Math.max(1, maxima) / 4);
         const escalaMaxima = paso * 4;
-        const primero = ordenadas.length > 0 ? Date.parse(ordenadas[0].comprobado_en) : 0;
-        const ultimo = ordenadas.length > 0 ? Date.parse(ordenadas[ordenadas.length - 1].comprobado_en) : 0;
-        const rango = ultimo - primero;
+        const mismoDia =
+            ordenadas.length > 0 &&
+            new Date(ordenadas[0].comprobado_en).toDateString() ===
+                new Date(
+                    ordenadas[ordenadas.length - 1].comprobado_en,
+                ).toDateString();
 
         const puntos = ordenadas.map((c, indice) => ({
             ...c,
-            x: IZQUIERDA + ANCHO * (rango > 0
-                ? (Date.parse(c.comprobado_en) - primero) / rango
-                : ordenadas.length > 1 ? indice / (ordenadas.length - 1) : 0.5),
+            x:
+                IZQUIERDA +
+                ANCHO *
+                    (ordenadas.length > 1
+                        ? indice / (ordenadas.length - 1)
+                        : 0.5),
             y: ABAJO - (c.latencia_ms / escalaMaxima) * ALTO,
             fallida: esFallida(c),
         }));
 
         const cantidadMarcas = Math.min(5, puntos.length);
+
         const marcas = Array.from({ length: cantidadMarcas }, (_, i) => {
-            const indice = cantidadMarcas === 1 ? 0 : Math.round(i * (puntos.length - 1) / (cantidadMarcas - 1));
-            return puntos[indice];
-        }).filter((p, i, lista) => lista.findIndex((o) => o.id === p.id) === i);
+            const indice =
+                cantidadMarcas === 1
+                    ? 0
+                    : Math.round(
+                          (i * (puntos.length - 1)) / (cantidadMarcas - 1),
+                      );
+
+            return {
+                ...puntos[indice],
+                etiqueta: fechaEje(puntos[indice].comprobado_en, mismoDia),
+            };
+        });
 
         const linea = puntos.map((p) => `${p.x},${p.y}`).join(" ");
-        const area = puntos.length > 1
-            ? `M ${puntos[0].x} ${ABAJO} L ${puntos.map((p) => `${p.x} ${p.y}`).join(" L ")} L ${puntos[puntos.length - 1].x} ${ABAJO} Z`
-            : "";
+        const area =
+            puntos.length > 1
+                ? `M ${puntos[0].x} ${ABAJO} L ${puntos.map((p) => `${p.x} ${p.y}`).join(" L ")} L ${puntos[puntos.length - 1].x} ${ABAJO} Z`
+                : "";
 
-        return { puntos, marcas, linea, area, paso, escalaMaxima, minima, maxima, promedio };
+        return {
+            puntos,
+            marcas,
+            linea,
+            area,
+            paso,
+            escalaMaxima,
+            minima,
+            maxima,
+            promedio,
+        };
     });
 
-    let destacado = $derived(grafico.puntos.find((p) => p.id === puntoActivo) ?? null);
+    let destacado = $derived(
+        grafico.puntos.find((p) => p.id === puntoActivo) ?? null,
+    );
 </script>
 
 <div class="graph-layout">
@@ -130,35 +186,78 @@
                 class="latency-svg"
                 viewBox="0 0 732 256"
                 role="img"
-                aria-label="Gráfica de latencia de {grafico.puntos.length} comprobaciones, ordenadas por fecha"
+                aria-label="Gráfica de latencia de {grafico.puntos
+                    .length} comprobaciones, ordenadas por fecha"
             >
                 <title>Latencia de las comprobaciones del servicio</title>
                 <defs>
-                    <linearGradient id="sargas-latency-gradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.30" />
-                        <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0.01" />
+                    <linearGradient
+                        id="sargas-latency-gradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                    >
+                        <stop
+                            offset="0%"
+                            stop-color="var(--color-primary)"
+                            stop-opacity="0.30"
+                        />
+                        <stop
+                            offset="100%"
+                            stop-color="var(--color-primary)"
+                            stop-opacity="0.01"
+                        />
                     </linearGradient>
                 </defs>
 
                 {#each [0, 1, 2, 3, 4] as indice}
-                    {@const y = ARRIBA + indice * ALTO / 4}
-                    <line x1={IZQUIERDA} x2={DERECHA} y1={y} y2={y} class="grid-line" />
-                    <text x={IZQUIERDA - 12} y={y + 4} text-anchor="end" class="axis-text">
-                        {milisegundos(grafico.escalaMaxima - indice * grafico.paso)}
+                    {@const y = ARRIBA + (indice * ALTO) / 4}
+                    <line
+                        x1={IZQUIERDA}
+                        x2={DERECHA}
+                        y1={y}
+                        y2={y}
+                        class="grid-line"
+                    />
+                    <text
+                        x={IZQUIERDA - 12}
+                        y={y + 4}
+                        text-anchor="end"
+                        class="axis-text"
+                    >
+                        {milisegundos(
+                            grafico.escalaMaxima - indice * grafico.paso,
+                        )}
                     </text>
                 {/each}
                 {#each grafico.marcas as marca, indice}
-                    <line x1={marca.x} x2={marca.x} y1={ARRIBA} y2={ABAJO} class="grid-line" />
+                    <line
+                        x1={marca.x}
+                        x2={marca.x}
+                        y1={ARRIBA}
+                        y2={ABAJO}
+                        class="grid-line"
+                    />
                     <text
                         x={marca.x}
                         y="233"
-                        text-anchor={indice === 0 ? "start" : indice === grafico.marcas.length - 1 ? "end" : "middle"}
+                        text-anchor={indice === 0
+                            ? "start"
+                            : indice === grafico.marcas.length - 1
+                              ? "end"
+                              : "middle"}
                         class="axis-text"
-                    >{fechaBreve(marca.comprobado_en)}</text>
+                    >
+                        {marca.etiqueta}
+                    </text>
                 {/each}
 
                 {#if grafico.area}
-                    <path d={grafico.area} fill="url(#sargas-latency-gradient)" />
+                    <path
+                        d={grafico.area}
+                        fill="url(#sargas-latency-gradient)"
+                    />
                 {/if}
                 <polyline
                     points={grafico.linea}
@@ -172,8 +271,16 @@
                     <circle
                         cx={punto.x}
                         cy={punto.y}
-                        r={puntoActivo === punto.id ? 5.5 : cantidad === 100 ? 2.6 : 3.5}
-                        fill={punto.fallida ? "var(--color-down)" : "var(--color-primary-hover)"}
+                        r={puntoActivo === punto.id
+                            ? 5
+                            : cantidad === 100
+                              ? 2.2
+                              : cantidad === 50
+                                ? 2.8
+                                : 3.5}
+                        fill={punto.fallida
+                            ? "var(--color-down)"
+                            : "var(--color-primary-hover)"}
                         stroke="var(--color-surface)"
                         stroke-width="1.25"
                         role="button"
@@ -193,16 +300,30 @@
                             }
                         }}
                     >
-                        <title>{new Date(punto.comprobado_en).toLocaleString("es-UY")} · {milisegundos(punto.latencia_ms)} ms · {punto.error ?? (punto.codigo_http === null ? "Sin respuesta HTTP" : `HTTP ${punto.codigo_http}`)}</title>
+                        <title
+                            >{new Date(punto.comprobado_en).toLocaleString(
+                                "es-UY",
+                            )} · {milisegundos(punto.latencia_ms)} ms · {punto.error ??
+                                (punto.codigo_http === null
+                                    ? "Sin respuesta HTTP"
+                                    : `HTTP ${punto.codigo_http}`)}</title
+                        >
                     </circle>
                 {/each}
             </svg>
             {#if destacado}
                 <div class="graph-tooltip" role="status">
                     <strong>{milisegundos(destacado.latencia_ms)} ms</strong>
-                    <span>{new Date(destacado.comprobado_en).toLocaleString("es-UY")}</span>
+                    <span
+                        >{new Date(destacado.comprobado_en).toLocaleString(
+                            "es-UY",
+                        )}</span
+                    >
                     <span class:failed={destacado.fallida}>
-                        {destacado.error ?? (destacado.codigo_http === null ? "Sin respuesta HTTP" : `HTTP ${destacado.codigo_http}`)}
+                        {destacado.error ??
+                            (destacado.codigo_http === null
+                                ? "Sin respuesta HTTP"
+                                : `HTTP ${destacado.codigo_http}`)}
                     </span>
                 </div>
             {/if}
@@ -211,42 +332,164 @@
 
     <div class="graph-footer">
         <div class="stats" aria-label="Estadísticas del rango seleccionado">
-            <div><small>Mínima</small><strong>{milisegundos(grafico.minima)} ms</strong></div>
-            <div><small>Promedio</small><strong>{milisegundos(grafico.promedio)} ms</strong></div>
-            <div><small>Máxima</small><strong>{milisegundos(grafico.maxima)} ms</strong></div>
+            <div>
+                <small>Mínima</small><strong
+                    >{milisegundos(grafico.minima)} ms</strong
+                >
+            </div>
+            <div>
+                <small>Promedio</small><strong
+                    >{milisegundos(grafico.promedio)} ms</strong
+                >
+            </div>
+            <div>
+                <small>Máxima</small><strong
+                    >{milisegundos(grafico.maxima)} ms</strong
+                >
+            </div>
         </div>
         <span class="sync-status">
             {grafico.puntos.length} comprobaciones
             {#if ultimaSincronizacion}
-                · actualizado {new Date(ultimaSincronizacion).toLocaleTimeString("es-UY")}
+                · actualizado {new Date(
+                    ultimaSincronizacion,
+                ).toLocaleTimeString("es-UY")}
             {/if}
         </span>
     </div>
 </div>
 
 <style>
-    .graph-layout { min-width: 0; }
-    .graph-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    .graph-header h2 { margin: 0 0 4px; font-size: 16px; }
-    .graph-header p { margin: 0; color: var(--color-muted); font-size: 12px; }
-    .range-picker { display: flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 12px; }
-    .graph-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0 6px; color: var(--color-muted); font-size: 12px; }
-    .graph-legend span { display: inline-flex; align-items: center; gap: 7px; }
-    .legend-line { width: 17px; height: 3px; background: var(--color-primary-hover); border-radius: 3px; }
-    .legend-error { width: 8px; height: 8px; border-radius: 50%; background: var(--color-down); }
-    .graph-scroller { overflow-x: auto; }
-    .graph-stage { position: relative; min-width: 590px; }
-    .latency-svg { display: block; width: 100%; height: auto; }
-    .grid-line { stroke: var(--color-border); stroke-width: 0.8; stroke-dasharray: 3 5; }
-    .axis-text { fill: var(--color-muted); font-size: 11px; }
-    .graph-tooltip { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 4px; max-width: 240px; padding: 10px 12px; pointer-events: none; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface-elevated); color: var(--color-text); font-size: 12px; box-shadow: var(--shadow-card); }
-    .graph-tooltip strong { font-size: 14px; }
-    .graph-tooltip span { color: var(--color-muted); overflow-wrap: anywhere; }
-    .graph-tooltip .failed { color: var(--color-down); }
-    .graph-footer { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
-    .stats { display: flex; gap: 26px; flex-wrap: wrap; }
-    .stats div { display: flex; flex-direction: column; gap: 3px; }
-    .stats small, .sync-status { color: var(--color-muted); font-size: 11px; }
-    .stats strong { color: var(--color-text); font-size: 14px; font-variant-numeric: tabular-nums; }
-    @media (max-width: 600px) { .stats { gap: 16px; } }
+    .graph-layout {
+        min-width: 0;
+    }
+    .graph-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .graph-header h2 {
+        margin: 0 0 4px;
+        font-size: 16px;
+    }
+    .graph-header p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 12px;
+    }
+    .range-picker {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-muted);
+        font-size: 12px;
+    }
+    .graph-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin: 16px 0 6px;
+        color: var(--color-muted);
+        font-size: 12px;
+    }
+    .graph-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .legend-line {
+        width: 17px;
+        height: 3px;
+        background: var(--color-primary-hover);
+        border-radius: 3px;
+    }
+    .legend-error {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-down);
+    }
+    .graph-scroller {
+        overflow-x: auto;
+    }
+    .graph-stage {
+        position: relative;
+        min-width: 590px;
+    }
+    .latency-svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .grid-line {
+        stroke: var(--color-border);
+        stroke-width: 0.8;
+        stroke-dasharray: 3 5;
+    }
+    .axis-text {
+        fill: var(--color-muted);
+        font-size: 11px;
+    }
+    .graph-tooltip {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-width: 240px;
+        padding: 10px 12px;
+        pointer-events: none;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-control);
+        background: var(--color-surface-elevated);
+        color: var(--color-text);
+        font-size: 12px;
+        box-shadow: var(--shadow-card);
+    }
+    .graph-tooltip strong {
+        font-size: 14px;
+    }
+    .graph-tooltip span {
+        color: var(--color-muted);
+        overflow-wrap: anywhere;
+    }
+    .graph-tooltip .failed {
+        color: var(--color-down);
+    }
+    .graph-footer {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+    }
+    .stats {
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+    }
+    .stats div {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    .stats small,
+    .sync-status {
+        color: var(--color-muted);
+        font-size: 11px;
+    }
+    .stats strong {
+        color: var(--color-text);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 600px) {
+        .stats {
+            gap: 16px;
+        }
+    }
 </style>

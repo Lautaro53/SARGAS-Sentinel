@@ -29,6 +29,21 @@
     return { pagina: "dashboard", detalleId: null };
   }
 
+  type Tema = "neon-blue" | "neon-blue-light";
+  let tema = $state<Tema>(
+    document.documentElement.dataset.theme === "neon-blue-light" ? "neon-blue-light" : "neon-blue",
+  );
+
+  function alternarTema() {
+    tema = tema === "neon-blue" ? "neon-blue-light" : "neon-blue";
+    document.documentElement.dataset.theme = tema;
+    try {
+      localStorage.setItem("sargas.tema", tema);
+    } catch {
+      // El cambio visual funciona aunque no se pueda guardar la preferencia.
+    }
+  }
+
   let menuAbierto = $state(false);
   let ruta = $state<Ruta>(interpretarRuta(window.location.pathname));
   let servicioSeleccionado = $state<Servicio | null>(null);
@@ -130,6 +145,8 @@
       alternarMenu={() => (menuAbierto = !menuAbierto)}
       titulo={tituloTopbar}
       descripcion={descripcionTopbar}
+      {tema}
+      {alternarTema}
     />
     <main class="page-content">
       {#if ruta.pagina === "dashboard"}

@@ -28,9 +28,10 @@ export async function obtenerServicios(): Promise<Servicio[]> {
 
 
 export async function obtenerEstadoServicio(
-  id: number
+  id: number,
+  signal?: AbortSignal
 ): Promise<EstadoServicio> {
-  const respuesta = await fetch(`/api/servicios/${id}/estado`)
+  const respuesta = await fetch(`/api/servicios/${id}/estado`, { signal })
 
   if (!respuesta.ok) {
     throw new Error(
