@@ -9,11 +9,11 @@ if not exist "%~dp0SARGAS-sentinel\scripts\instalar-sentinel.ps1" (
     exit /b 1
 )
 
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0SARGAS-sentinel\scripts\instalar-sentinel.ps1"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0SARGAS-sentinel\scripts\instalar-sentinel.ps1" %*
 set "codigo=%ERRORLEVEL%"
 if not "%codigo%"=="0" (
     echo.
-    echo ERROR: La instalacion de SARGAS fallo ^(codigo %codigo%^).
+    echo ERROR: La operacion de instalacion fallo ^(codigo %codigo%^).
     echo Revisa los mensajes anteriores. No borres los volumenes de Docker.
 )
 exit /b %codigo%

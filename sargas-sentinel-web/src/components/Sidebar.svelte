@@ -80,7 +80,7 @@
 
   <div class="sidebar-footer">
     <div class="sidebar-footer-content">
-      <span class="version-badge">v1.1.6</span>
+      <span class="version-badge">v1.2.0</span>
     </div>
   </div>
 </aside>

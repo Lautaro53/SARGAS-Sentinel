@@ -30,3 +30,23 @@ body {
 button {
   font: inherit;
 }
+
+.stale-warning {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--color-warning);
+  background: var(--color-surface-elevated);
+  color: var(--color-warning);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.stale-warning {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--color-warning);
+  background: var(--color-surface-elevated);
+  color: var(--color-warning);
+  font-size: 12px;
+  line-height: 1.5;
+}

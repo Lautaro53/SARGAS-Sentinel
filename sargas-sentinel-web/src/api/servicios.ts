@@ -1,5 +1,10 @@
 
 import type { Servicio, EstadoServicio } from '../types/servicio'
+import { leerCopia, guardarCopia, esLista } from '../lib/cacheSesion.ts'
+
+export function leerServiciosGuardados() {
+  return leerCopia('servicios', (valor): valor is Servicio[] => esLista(valor, esServicio));
+}
 
 
 export async function obtenerServicios(): Promise<Servicio[]> {
@@ -23,6 +28,7 @@ export async function obtenerServicios(): Promise<Servicio[]> {
     )
   }
 
+  guardarCopia('servicios', datos);
   return datos
 }
 
@@ -51,6 +57,7 @@ export async function obtenerEstadoServicio(
     )
   }
 
+  guardarCopia(`detalle.${id}.estado`, datos);
   return datos
 
 }

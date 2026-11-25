@@ -14,9 +14,11 @@
     import { obtenerTodosIncidentes } from "../api/incidentes";
 
     import CheckHistory from "../components/CheckHistory.svelte";
-    import { obtenerComprobaciones } from "../api/comprobaciones";
+    import { obtenerComprobaciones, esComprobacion } from "../api/comprobaciones";
     import type { Comprobacion } from "../types/comprobacion";
     import Paginacion from "../components/Paginacion.svelte";
+    import { guardarCopia, leerCopia, esLista, mensajeErrorConsulta } from "../lib/cacheSesion";
+    import { leerServiciosGuardados } from "../api/servicios";
     import ServicioIdentidad from "../components/ServicioIdentidad.svelte";
 
     type Props = {
@@ -126,7 +128,8 @@
                 return null;
 
             const fecha = new Date(cache.sincronizadoEn);
-            if (Number.isNaN(fecha.getTime())) return null;
+            if (Number.isNaN(fecha.getTime()) || fecha.getTime() > Date.now() + 60_000 ||
+                Date.now() - fecha.getTime() > 24 * 60 * 60 * 1000) return null;
 
             const ids = new Set(cache.servicios.map((s) => s.id));
             const idsEstados = new Set(cache.estados.map((e) => e.servicio_id));
@@ -205,6 +208,7 @@
 
                 if (resultado.status === "fulfilled") {
                     historiales[id] = resultado.value;
+                    guardarCopia(`detalle.${id}.grafica.20`, resultado.value);
                 } else {
                     errores.push(id);
                 }
@@ -227,6 +231,27 @@
             estados = cache.estados;
             ultimaSincronizacion = cache.fecha;
             cargando = false;
+
+            const copiaServicios = leerServiciosGuardados();
+            if (!copiaServicios || Date.parse(copiaServicios.sincronizadoEn) < cache.fecha.getTime()) {
+                guardarCopia("servicios", cache.servicios, cache.fecha.toISOString());
+            }
+            for (const estado of cache.estados) {
+                const clave = `detalle.${estado.servicio_id}.estado`;
+                const copiaEstado = leerCopia(clave, (v): v is EstadoServicio =>
+                    esEstadoServicio(v) && v.servicio_id === estado.servicio_id);
+                if (!copiaEstado || Date.parse(copiaEstado.sincronizadoEn) < cache.fecha.getTime()) {
+                    guardarCopia(clave, estado, cache.fecha.toISOString());
+                }
+            }
+            const copiasHistorial: Record<number, Comprobacion[]> = {};
+            for (const servicio of cache.servicios) {
+                const copiaGrafica = leerCopia(`detalle.${servicio.id}.grafica.20`,
+                    (v): v is Comprobacion[] => esLista(v, (c): c is Comprobacion =>
+                        esComprobacion(c) && c.servicio_id === servicio.id) && v.length <= 20);
+                if (copiaGrafica) copiasHistorial[servicio.id] = copiaGrafica.datos;
+            }
+            historialServicios = copiasHistorial;
         }
 
         const cacheIncidentes = leerCacheIncidentes();
@@ -279,15 +304,12 @@
 
                 if (!activo) return;
 
-                historialServicios = resultadoHistorial.historiales;
+                historialServicios = { ...historialServicios, ...resultadoHistorial.historiales };
                 erroresHistorial = resultadoHistorial.errores;
             } catch (error) {
                 if (!activo) return;
 
-                mensajeError =
-                    error instanceof Error
-                        ? error.message
-                        : "No se pudo actualizar el monitoreo";
+                mensajeError = mensajeErrorConsulta(error, "No se pudo actualizar el monitoreo");
             } finally {
                 consultaEnCurso = false;
 
@@ -336,10 +358,7 @@
             } catch (error) {
                 if (!activo) return;
 
-                errorIncidentes =
-                    error instanceof Error
-                        ? error.message
-                        : "No se pudieron consultar los incidentes";
+                errorIncidentes = mensajeErrorConsulta(error, "No se pudieron consultar los incidentes");
             } finally {
                 consultaIncidentesEnCurso = false;
             }
@@ -362,20 +381,21 @@
 
 <div class="dashboard">
     <section class="metrics-section" aria-label="Resumen de servicios">
-        {#if mensajeError}
-            <p class="api-error" role="alert">
-                No se pudo actualizar: {mensajeError}
-
-                {#if ultimaSincronizacion !== null}
-                    Se muestran los últimos datos recibidos.
+        {#if mensajeError || errorIncidentes || mostrandoCache}
+            <p class="stale-warning" role="status">
+                {#if mensajeError}
+                    {ultimaSincronizacion !== null ? "Datos guardados / sin conexión" : "No se pudo conectar a la API"}
+                {:else if errorIncidentes}
+                    {incidentesAbiertos !== null ? "Incidentes: se muestra el último conteo guardado" : "No se pudieron consultar los incidentes"}
+                {:else}
+                    Datos guardados · sincronizando con la API
                 {/if}
-            </p>
-        {/if}
-
-        {#if mostrandoCache}
-            <p class="demo-note" role="status">
-                Se muestran datos guardados de la última sincronización. La
-                información todavía no fue actualizada.
+                {#if ultimaSincronizacion !== null}
+                    · última sincronización de servicios: {ultimaSincronizacion.toLocaleString("es-UY")}
+                {/if}
+                {#if mensajeError && errorIncidentes}
+                    · también falló la consulta de incidentes.
+                {/if}
             </p>
         {/if}
 
@@ -426,16 +446,7 @@
                 {/if}
             </div>
 
-            {#if errorIncidentes}
-                <p class="api-error" role="alert">
-                    No se pudieron actualizar los incidentes:
-                    {errorIncidentes}
 
-                    {#if incidentesAbiertos !== null}
-                        Se muestra el último conteo disponible.
-                    {/if}
-                </p>
-            {/if}
         {/if}
     </section>
 
@@ -446,6 +457,9 @@
         <div class="panel-header">
             <h2 id="services-title">Servicios monitorizados</h2>
         </div>
+        {#if erroresHistorial.length > 0 && Object.keys(historialServicios).length > 0}
+            <p class="stale-warning" role="status">Algunas latencias no se pudieron actualizar. Se muestran datos guardados cuando están disponibles.</p>
+        {/if}
 
         {#if cargando}
             <p class="table-message">Cargando servicios...</p>
@@ -537,9 +551,7 @@
                                 </td>
 
                                 <td class="latency-cell">
-                                    {#if erroresHistorial.includes(servicio.id)}
-                                        <span class="muted">No disponible</span>
-                                    {:else if ultimaComprobacion}
+                                    {#if ultimaComprobacion}
                                         <span class="latency-value">
                                             {ultimaComprobacion.latencia_ms.toLocaleString(
                                                 "es-UY",
@@ -549,6 +561,8 @@
                                                 },
                                             )} ms
                                         </span>
+                                    {:else if erroresHistorial.includes(servicio.id)}
+                                        <span class="muted">No disponible</span>
                                     {:else if servicio.id in historialServicios}
                                         <span class="muted">—</span>
                                     {:else}
@@ -558,15 +572,13 @@
                                 </td>
 
                                 <td>
-                                    {#if erroresHistorial.includes(servicio.id)}
-                                        <span class="muted">No disponible</span>
-                                    {:else if servicio.id in historialServicios}
+                                    {#if servicio.id in historialServicios}
                                         <CheckHistory
                                             comprobaciones={historialServicios[
                                                 servicio.id
                                             ]}
                                         />
-                                    {:else if mensajeError}
+                                    {:else if erroresHistorial.includes(servicio.id) || mensajeError}
                                         <span class="muted">No disponible</span>
                                     {:else}
                                         <span class="muted">Consultando...</span
@@ -621,8 +633,31 @@
         overflow: hidden;
     }
 
-    .api-error {
-        color: var(--color-down) !important;
+
+    /* En tablets, conservar columnas legibles y desplazar solo la tabla. */
+    .services-panel table {
+        min-width: 930px;
+        table-layout: fixed;
+    }
+
+    .services-panel th:nth-child(1) { width: 25%; }
+    .services-panel th:nth-child(2) { width: 13%; }
+    .services-panel th:nth-child(3) { width: 9%; }
+    .services-panel th:nth-child(4) { width: 19%; }
+    .services-panel th:nth-child(5) { width: 13%; }
+    .services-panel th:nth-child(6) { width: 21%; }
+
+    .services-panel :global(.service-info) {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .services-panel :global(.service-name) {
+        width: 100%;
+        overflow: hidden;
+        overflow-wrap: normal;
+        white-space: nowrap;
+        text-overflow: ellipsis;
     }
 
     .panel-header h2 {

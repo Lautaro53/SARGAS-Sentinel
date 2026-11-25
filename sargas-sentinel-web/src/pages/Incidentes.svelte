@@ -3,6 +3,11 @@
   import DropdownMenu from "../components/ui/DropdownMenu.svelte";
   import { consultarHistorialIncidentes, type EstadoIncidentes, type OrdenIncidentes } from "../api/historial";
   import type { Incidente } from "../types/incidente";
+  import { validarIncidentes } from "../api/incidentes";
+  import { leerCopia, guardarCopia, esPagina, mensajeErrorConsulta } from "../lib/cacheSesion";
+  const esIncidente = (v: unknown): v is Incidente => {
+    try { return validarIncidentes([v]).length === 1; } catch { return false; }
+  };
   import { SlidersHorizontal, ArrowUpDown } from "@lucide/svelte";
 
   const TAMANO_PAGINA = 10;
@@ -15,6 +20,10 @@
   let hasta = $state("");
   let cargando = $state(true);
   let error = $state("");
+  let fechaCopia = $state<string | null>(null);
+  let usandoCopia = $state(false);
+  let hayDatos = $state(false);
+  let reintento = $state(0);
   let totalPaginas = $derived(Math.max(1, Math.ceil(total / TAMANO_PAGINA)));
 
   const opcionesEstado: { value: EstadoIncidentes; label: string }[] = [
@@ -33,6 +42,14 @@
     const ordenActual = orden;
     const desdeFiltro = desde;
     const hastaFiltro = hasta;
+    reintento;
+    const clave = `incidentes.${JSON.stringify([paginaActual, estado, ordenActual, desdeFiltro, hastaFiltro])}`;
+    const copia = leerCopia(clave, (v): v is { registros: Incidente[]; total: number } => esPagina(v, esIncidente));
+    incidentes = copia?.datos.registros ?? [];
+    total = copia?.datos.total ?? 0;
+    fechaCopia = copia?.sincronizadoEn ?? null;
+    hayDatos = copia !== null;
+    usandoCopia = copia !== null;
     const controlador = new AbortController();
     let vigente = true;
     cargando = true;
@@ -44,29 +61,44 @@
       if (!vigente) return;
       incidentes = resultado.registros;
       total = resultado.total;
+      fechaCopia = guardarCopia(clave, resultado);
+      hayDatos = true;
+      usandoCopia = false;
+      error = "";
       const ultima = Math.max(1, Math.ceil(resultado.total / TAMANO_PAGINA));
       if (paginaActual > ultima) pagina = ultima;
     }).catch((e: unknown) => {
       if (!vigente || controlador.signal.aborted) return;
-      error = e instanceof Error ? e.message : "No se pudieron cargar los incidentes";
+      usandoCopia = hayDatos;
+      error = copia === null
+        ? "No se pudo consultar el historial. No hay datos guardados para esta selección."
+        : mensajeErrorConsulta(e, "No se pudieron actualizar los incidentes");
     }).finally(() => {
       if (vigente) cargando = false;
     });
 
     return () => { vigente = false; controlador.abort(); };
   });
+
+  import { onMount } from "svelte";
+  onMount(() => {
+    const refrescar = () => { if (!document.hidden) reintento += 1; };
+    window.addEventListener("online", refrescar);
+    document.addEventListener("visibilitychange", refrescar);
+    const intervalo = window.setInterval(refrescar, 15_000);
+    return () => {
+      window.removeEventListener("online", refrescar);
+      document.removeEventListener("visibilitychange", refrescar);
+      window.clearInterval(intervalo);
+    };
+  });
 </script>
 
 <div class="incidents-screen">
-  <header class="screen-header">
-    <h1>Incidentes</h1>
-    <p>Interrupciones y recuperaciones de los servicios monitorizados.</p>
-  </header>
-
   <section class="data-table-panel history-panel" aria-labelledby="incidents-title">
     <div class="panel-header">
       <h2 id="incidents-title">Historial de incidentes</h2>
-      <span>{total} {total === 1 ? "registro" : "registros"}</span>
+      <span>{!hayDatos && error ? "Sin datos disponibles" : `${total} ${total === 1 ? "registro" : "registros"}`}</span>
     </div>
     {#snippet iconoFiltro()}
       <SlidersHorizontal size={17} aria-hidden="true" />
@@ -110,7 +142,9 @@
       </label>
       {#if cargando && incidentes.length > 0}<span class="updating" role="status">Actualizando…</span>{/if}
     </div>
-    {#if error}<p class="panel-warning" role="alert">{error}</p>{/if}
+    {#if usandoCopia && error}
+      <p class="stale-warning" role="status">Datos guardados / sin conexión · última sincronización: {fechaCopia ? new Date(fechaCopia).toLocaleString("es-UY") : "desconocida"}. {error}</p>
+    {:else if error}<p class="panel-warning" role="alert">{error}</p>{/if}
     {#if cargando && incidentes.length === 0 && !error}
       <p class="panel-message">Cargando incidentes...</p>
     {:else if incidentes.length === 0}
@@ -157,8 +191,6 @@
 
 <style>
   .incidents-screen { display: grid; gap: 16px; min-width: 0; }
-  .screen-header h1 { margin: 0; font-size: clamp(20px, 2vw, 26px); }
-  .screen-header p { margin: 6px 0 0; color: var(--color-muted); font-size: 13px; }
   .history-panel { position: relative; z-index: 1; overflow: visible; }
   .history-panel:focus-within { z-index: 20; }
   .history-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; padding: 10px 16px 14px; border-top: 1px solid var(--color-border); }

@@ -2,6 +2,8 @@
     import { onMount, tick } from "svelte";
 
     import type { Servicio } from "../types/servicio";
+    import { leerServiciosGuardados } from "../api/servicios";
+    import { guardarCopia, invalidarCopias, mensajeErrorConsulta } from "../lib/cacheSesion";
     import {
         obtenerServicios,
         cambiarHabilitacion,
@@ -29,6 +31,9 @@
     let servicios = $state<Servicio[]>([]);
     let cargando = $state(true);
     let mensajeError = $state("");
+    let fechaCopia = $state<string | null>(null);
+    let usandoCopia = $state(false);
+    let hayDatos = $state(false);
 
     let mostrandoFormulario = $state(false);
     let confirmacion = $state("");
@@ -234,31 +239,50 @@
             // Se utilizan los valores predeterminados si el navegador bloquea el almacenamiento.
         }
 
+        const copia = leerServiciosGuardados();
+        if (copia) {
+            servicios = copia.datos;
+            fechaCopia = copia.sincronizadoEn;
+            usandoCopia = true;
+            hayDatos = true;
+            cargando = false;
+        }
+
+        let consultando = false;
         async function cargarServicios() {
+            if (consultando || document.hidden) return;
+            consultando = true;
             try {
                 const datos = await obtenerServicios();
 
                 if (activo) {
                     servicios = datos;
+                    fechaCopia = leerServiciosGuardados()?.sincronizadoEn ?? new Date().toISOString();
+                    hayDatos = true;
+                    usandoCopia = false;
+                    mensajeError = "";
                 }
             } catch (error) {
                 if (activo) {
-                    mensajeError =
-                        error instanceof Error
-                            ? error.message
-                            : "No se pudieron cargar los servicios";
+                    usandoCopia = hayDatos;
+                    mensajeError = mensajeErrorConsulta(error, "No se pudieron cargar los servicios");
                 }
             } finally {
-                if (activo) {
-                    cargando = false;
-                }
+                consultando = false;
+                if (activo) cargando = false;
             }
         }
 
         void cargarServicios();
-
+        const intervalo = window.setInterval(() => void cargarServicios(), 15_000);
+        const reanudar = () => { if (!document.hidden) void cargarServicios(); };
+        window.addEventListener("online", reanudar);
+        document.addEventListener("visibilitychange", reanudar);
         return () => {
             activo = false;
+            window.clearInterval(intervalo);
+            window.removeEventListener("online", reanudar);
+            document.removeEventListener("visibilitychange", reanudar);
         };
     });
 
@@ -302,6 +326,8 @@
             actual.id === actualizado.id ? actualizado : actual,
         );
 
+        invalidarCopias();
+        fechaCopia = guardarCopia("servicios", servicios);
         cerrarFormulario();
         mensajeError = "";
         confirmacion = `Servicio "${actualizado.nombre}" actualizado correctamente.`;
@@ -325,6 +351,8 @@
                     : actual,
             );
 
+            invalidarCopias();
+            fechaCopia = guardarCopia("servicios", servicios);
             confirmacion = nuevoEstado
                 ? `Monitoreo reanudado: ${servicio.nombre}`
                 : `Monitoreo pausado: ${servicio.nombre}`;
@@ -365,6 +393,8 @@
                 cerrarFormulario();
             }
 
+            invalidarCopias();
+            fechaCopia = guardarCopia("servicios", servicios);
             confirmacion = `Servicio "${servicio.nombre}" archivado correctamente.`;
         } catch (error) {
             errorAccion =
@@ -379,6 +409,8 @@
     function registrarEnLista(nuevo: Servicio) {
         servicios = [...servicios, nuevo];
 
+        invalidarCopias();
+        fechaCopia = guardarCopia("servicios", servicios);
         mostrandoFormulario = false;
         mensajeError = "";
         confirmacion = `Servicio "${nuevo.nombre}" registrado correctamente.`;
@@ -485,12 +517,13 @@
             </span>
         </div>
 
-        {#if cargando}
+        {#if usandoCopia && mensajeError}
+            <p class="stale-warning" role="status">Datos guardados / sin conexión · última sincronización: {fechaCopia ? new Date(fechaCopia).toLocaleString("es-UY") : "desconocida"}. {mensajeError}</p>
+        {/if}
+        {#if cargando && !hayDatos}
             <p class="message">Cargando servicios...</p>
-        {:else if mensajeError}
-            <p class="message error" role="alert">
-                {mensajeError}
-            </p>
+        {:else if mensajeError && !hayDatos}
+            <p class="message error" role="alert">{mensajeError}</p>
         {:else if servicios.length === 0}
             <p class="message">Todavía no hay servicios registrados.</p>
         {:else if serviciosFiltrados.length === 0}

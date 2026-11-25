@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-    "test:api": "node --test tests/servicios.test.mjs tests/comprobaciones.test.mjs tests/historial.test.mjs"
+    "test:api": "node --experimental-strip-types --test tests/servicios.test.mjs tests/comprobaciones.test.mjs tests/historial.test.mjs tests/cacheSesion.test.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

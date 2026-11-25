@@ -19,13 +19,25 @@ if ($Compilar) {
 if (-not (Test-Path -LiteralPath $nuevo -PathType Leaf)) {
     throw 'No existe sentinel-nuevo.exe. Ejecuta primero compilar-sentinel.ps1 o utiliza -Compilar.'
 }
-if (-not (Test-Path -LiteralPath $actual -PathType Leaf)) {
-    throw 'No existe sentinel.exe. Esta herramienta solo actualiza instalaciones locales existentes.'
-}
 
 # No modificar el ejecutable mientras Sentinel esta en uso.
 if (Get-Process -Name sentinel -ErrorAction SilentlyContinue) {
     throw 'Sentinel esta ejecutandose. Detenelo con Ctrl+C antes de actualizar.'
+}
+
+# Primer uso local: instalar el binario sin crear un respaldo inexistente.
+if (-not (Test-Path -LiteralPath $actual -PathType Leaf)) {
+    $hashNuevo = (Get-FileHash -LiteralPath $nuevo -Algorithm SHA256).Hash
+    $temporal = "$actual.$([guid]::NewGuid().ToString('N')).tmp"
+    try {
+        Copy-Item -LiteralPath $nuevo -Destination $temporal -ErrorAction Stop
+        if ((Get-FileHash -LiteralPath $temporal -Algorithm SHA256).Hash -ne $hashNuevo) { throw 'La copia inicial no coincide.' }
+        Move-Item -LiteralPath $temporal -Destination $actual -ErrorAction Stop
+    } finally {
+        if (Test-Path -LiteralPath $temporal) { Remove-Item -LiteralPath $temporal -Force }
+    }
+    Write-Host 'Ejecutable local instalado. Ejecuta .\sargas-dev.ps1 iniciar.' -ForegroundColor Green
+    return
 }
 
 $hashAnterior = (Get-FileHash -LiteralPath $actual -Algorithm SHA256).Hash

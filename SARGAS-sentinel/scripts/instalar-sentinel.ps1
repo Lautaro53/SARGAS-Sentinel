@@ -1,6 +1,27 @@
 # SARGAS Sentinel - Instalador Docker para Windows PowerShell 5.1+
 
+[CmdletBinding()]
+param(
+    [Parameter(Position = 0)]
+    [string]$Accion = 'ayuda'
+)
+
 $ErrorActionPreference = 'Stop'
+function Mostrar-Ayuda {
+    Write-Host 'SARGAS Sentinel - Instalacion Docker' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host '  .\sargas-instalar.cmd ayuda      Muestra esta ayuda'
+    Write-Host '  .\sargas-instalar.cmd instalar   Instala SARGAS por primera vez'
+    Write-Host ''
+    Write-Host 'Requiere Docker Desktop para instalar.'
+    Write-Host 'Para operar una instalacion existente: .\sargas-docker.cmd ayuda'
+}
+if ($Accion -eq 'ayuda') { Mostrar-Ayuda; return }
+if ($Accion -ne 'instalar') {
+    Mostrar-Ayuda
+    throw "Accion desconocida: '$Accion'."
+}
+
 $backend = Split-Path -Parent $PSScriptRoot
 $raiz = Split-Path -Parent $backend
 $frontend = Join-Path $raiz 'sargas-sentinel-web'
@@ -8,6 +29,11 @@ $compose = Join-Path $backend 'compose.yaml'
 $privado = Join-Path $env:USERPROFILE 'SARGAS-privado\docker-secrets'
 $archivoAdmin = Join-Path $privado 'postgres_password.txt'
 $archivoApp = Join-Path $privado 'sentinel_app_password.txt'
+$archivoPuerto = Join-Path (Split-Path -Parent $privado) 'puerto-http.txt'
+$archivoVersion = Join-Path $raiz 'VERSION'
+$envSecretosAnterior = $env:SARGAS_DOCKER_SECRETS
+$envPuertoAnterior = $env:SARGAS_HOST_PORT
+$envVersionAnterior = $env:SARGAS_BUILD_VERSION
 
 function Nueva-Clave {
     # Caracteres compatibles con PostgreSQL y archivos de secretos de Docker.
@@ -64,64 +90,6 @@ function Buscar-PuertoDisponible {
     throw 'No hay puertos disponibles entre 8080 y 8090.'
 }
 
-function Obtener-InstalacionSentinel {
-    $ids = @(
-        & docker ps -aq `
-            --filter 'label=com.docker.compose.project=sargas-db-lab' `
-            --filter 'label=com.docker.compose.service=sentinel' `
-            --filter 'label=com.docker.compose.oneoff=False'
-    )
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'No se pudieron consultar los contenedores.'
-    }
-
-    if ($ids.Count -eq 0) {
-        return $null
-    }
-
-    if ($ids.Count -ne 1) {
-        throw 'Se encontraron varios contenedores Sentinel. Revisar antes de continuar.'
-    }
-
-    $json = & docker inspect --format '{{json .HostConfig.PortBindings}}' $ids[0]
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'No se pudo inspeccionar el contenedor Sentinel.'
-    }
-
-    $configuracion = $json | ConvertFrom-Json
-    $enlaces = @($configuracion.'8080/tcp')
-
-    if ($enlaces.Count -ne 1 -or
-        $null -eq $enlaces[0] -or
-        $enlaces[0].HostIp -ne '127.0.0.1') {
-        throw 'La publicación de puertos existente requiere revisión manual.'
-    }
-
-    $puerto = 0
-    if (-not [int]::TryParse(
-        [string]$enlaces[0].HostPort,
-        [ref]$puerto
-    )) {
-        throw 'El puerto del contenedor no es válido.'
-    }
-
-    if ($puerto -lt 8080 -or $puerto -gt 8090) {
-        throw 'El puerto existente está fuera del rango automático 8080-8090.'
-    }
-
-    $estado = & docker inspect --format '{{.State.Running}}' $ids[0]
-
-    if ($LASTEXITCODE -ne 0) {
-        throw 'No se pudo consultar el estado de Sentinel.'
-    }
-
-    return [PSCustomObject]@{
-        Puerto = $puerto
-        Ejecutando = ($estado.Trim() -eq 'true')
-    }
-}
 
 try {
     Write-Host ''
@@ -132,6 +100,7 @@ try {
     # Comprobaciones antes de crear credenciales o contenedores.
     foreach ($archivo in @(
         $compose,
+        $archivoVersion,
         (Join-Path $backend 'Dockerfile'),
         (Join-Path $frontend 'package.json'),
         (Join-Path $frontend 'package-lock.json'),
@@ -141,6 +110,12 @@ try {
             throw "Falta un archivo necesario: $archivo. Extrae el ZIP completo sin separar las dos carpetas."
         }
     }
+
+    $version = (Get-Content -LiteralPath $archivoVersion -Raw).Trim()
+    if ($version -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+        throw 'VERSION no contiene una version estable valida.'
+    }
+    $env:SARGAS_BUILD_VERSION = $version
 
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
         throw 'No se encontro Docker. Instala Docker Desktop, inicia la aplicacion y vuelve a intentar.'
@@ -180,14 +155,17 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'No se pudieron consultar los volumenes de Docker.' }
     $volumenExiste = $volumenes -contains $volumenBD
 
+    $contenedores = @(& docker ps -aq --filter 'label=com.docker.compose.project=sargas-db-lab')
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudieron consultar los contenedores existentes.' }
+    if ($volumenExiste -or $contenedores.Count -gt 0) {
+        throw 'Ya existe una instalacion o datos de SARGAS. Usa sargas-docker.cmd para operar la instalacion; no se reconstruira ni se cambiara el volumen. Una instalacion incompleta requiere revision antes de reintentar.'
+    }
+
     $existeAdmin = Test-Path -LiteralPath $archivoAdmin -PathType Leaf
     $existeApp = Test-Path -LiteralPath $archivoApp -PathType Leaf
 
     if ($existeAdmin -ne $existeApp) {
         throw 'Falta uno de los dos secretos originales. No se regeneraran: recupera las credenciales de tu respaldo.'
-    }
-    if (-not $existeAdmin -and $volumenExiste) {
-        throw "Ya existe el volumen $volumenBD, pero faltan sus credenciales. Recuperalas antes de continuar: no se tocara la base."
     }
     if ($existeAdmin) {
         if ((Get-Item -LiteralPath $archivoAdmin).Length -eq 0 -or
@@ -221,55 +199,19 @@ try {
 
     $env:SARGAS_DOCKER_SECRETS = $privado.Replace('\', '/')
 
-    $archivoPuerto = Join-Path (
-    Split-Path -Parent $privado
-) 'puerto-http.txt'
-
-$instalacion = Obtener-InstalacionSentinel
-$puertoPreferido = $null
-$yaEjecutando = $false
-
-if ($null -ne $instalacion) {
-    $puertoPreferido = $instalacion.Puerto
-    $yaEjecutando = $instalacion.Ejecutando
-}
-elseif (Test-Path -LiteralPath $archivoPuerto) {
-    $valor = (Get-Content -LiteralPath $archivoPuerto -Raw).Trim()
-
-    $puertoLeido = 0
-
-    if (-not [int]::TryParse($valor, [ref]$puertoLeido) -or
-        $puertoLeido -lt 8080 -or
-        $puertoLeido -gt 8090) {
-        throw 'El archivo de configuración del puerto es inválido.'
-    }
-
-    $puertoPreferido = $puertoLeido
-}
-
-if ($null -ne $puertoPreferido -and
-    ($yaEjecutando -or
-        (Test-PuertoDisponible -Puerto $puertoPreferido))) {
-
-    $puertoSeleccionado = $puertoPreferido
-}
-else {
     $puertoSeleccionado = Buscar-PuertoDisponible
-}
-
-$env:SARGAS_HOST_PORT = [string]$puertoSeleccionado
-
-Write-Host "Puerto HTTP seleccionado: $puertoSeleccionado"
+    $env:SARGAS_HOST_PORT = [string]$puertoSeleccionado
+    Write-Host "Puerto HTTP seleccionado: $puertoSeleccionado"
 
     Push-Location $backend
     try {
         Write-Host '[3/5] Validando Compose...'
-        & docker compose -f .\compose.yaml config --quiet
+        & docker compose -p sargas-db-lab -f .\compose.yaml config --quiet
         if ($LASTEXITCODE -ne 0) { throw 'La configuracion Docker Compose es invalida.' }
 
         Write-Host '[4/5] Compilando e iniciando contenedores...'
         Write-Host 'Docker descargara imagenes y dependencias npm/Go durante la primera instalacion.'
-        & docker compose -f .\compose.yaml up -d --build
+        & docker compose -p sargas-db-lab -f .\compose.yaml up -d --build
         if ($LASTEXITCODE -ne 0) {
             throw 'No se pudo construir o iniciar SARGAS. Revisa el error de Docker mostrado arriba.'
         }
@@ -294,8 +236,8 @@ Write-Host "Puerto HTTP seleccionado: $puertoSeleccionado"
         }
         if (-not $disponible) {
             Write-Warning 'SARGAS no respondio como se esperaba. Ultimos logs (no borraremos datos):'
-            & docker compose -f .\compose.yaml ps
-            & docker compose -f .\compose.yaml logs --tail=40 sentinel postgres
+            & docker compose -p sargas-db-lab -f .\compose.yaml ps
+            & docker compose -p sargas-db-lab -f .\compose.yaml logs --tail=40 sentinel postgres
             throw 'La API o la web no superaron la verificacion.'
         }
         Write-Host ''
@@ -327,6 +269,7 @@ Write-Host "Puerto HTTP seleccionado: $puertoSeleccionado"
                 Remove-Item -LiteralPath $archivoTemporalPuerto -Force
             }
         }
+        Write-Host "Version del paquete instalado: $version"
         Write-Host 'SARGAS Sentinel instalado y disponible.' -ForegroundColor Green
         Write-Host "Abrir: $web"
         Write-Host 'Los datos permanecen en el volumen de PostgreSQL.'
@@ -340,4 +283,9 @@ catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host 'Los volumenes existentes no fueron borrados por el instalador.'
     exit 1
+}
+finally {
+    $env:SARGAS_DOCKER_SECRETS = $envSecretosAnterior
+    $env:SARGAS_HOST_PORT = $envPuertoAnterior
+    $env:SARGAS_BUILD_VERSION = $envVersionAnterior
 }

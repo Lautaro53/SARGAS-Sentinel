@@ -6,7 +6,7 @@
   import Servicios from "./pages/Servicios.svelte";
   import Incidentes from "./pages/Incidentes.svelte";
   import DetalleServicio from "./pages/DetalleServicio.svelte";
-  import { obtenerServicios } from "./api/servicios";
+  import { obtenerServicios, leerServiciosGuardados } from "./api/servicios";
   import type { Pagina } from "./types/navegacion";
   import type { Servicio } from "./types/servicio";
   import Footer from "./components/Footer.svelte";
@@ -49,6 +49,7 @@
   let servicioSeleccionado = $state<Servicio | null>(null);
   let cargandoDetalle = $state(false);
   let errorDetalle = $state("");
+  let avisoDetalle = $state("");
   let revision = 0;
 
   let tituloTopbar = $derived(
@@ -73,9 +74,11 @@
 
   async function sincronizarRuta() {
     const version = ++revision;
+    const idAnterior = ruta.detalleId;
     ruta = interpretarRuta(window.location.pathname);
     menuAbierto = false;
     errorDetalle = "";
+    if (idAnterior !== ruta.detalleId) avisoDetalle = "";
 
     if (ruta.detalleId === null) {
       servicioSeleccionado = null;
@@ -84,24 +87,26 @@
     }
 
     const id = ruta.detalleId;
-    if (servicioSeleccionado?.id === id) {
-      cargandoDetalle = false;
-      return;
-    }
-    servicioSeleccionado = null;
-    cargandoDetalle = true;
+    const copia = leerServiciosGuardados();
+    const conocido = servicioSeleccionado?.id === id ? servicioSeleccionado : null;
+    servicioSeleccionado = conocido ?? copia?.datos.find((servicio) => servicio.id === id) ?? null;
+    cargandoDetalle = servicioSeleccionado === null;
+
     try {
       const servicios = await obtenerServicios();
       if (version !== revision) return;
       const encontrado = servicios.find((servicio) => servicio.id === id);
-      if (encontrado) servicioSeleccionado = encontrado;
-      else errorDetalle = "El servicio no existe o está archivado.";
-    } catch (error) {
+      servicioSeleccionado = encontrado ?? null;
+      avisoDetalle = "";
+      if (!encontrado) errorDetalle = "El servicio no existe o está archivado.";
+    } catch {
       if (version !== revision) return;
-      errorDetalle =
-        error instanceof Error
-          ? error.message
-          : "No se pudo cargar el servicio.";
+      if (servicioSeleccionado) {
+        const fecha = copia?.sincronizadoEn;
+        avisoDetalle = `Datos guardados / sin conexión · última sincronización: ${fecha ? new Date(fecha).toLocaleString("es-UY") : "desconocida"}.`;
+      } else {
+        errorDetalle = "Sin conexión. No hay datos guardados de este servicio.";
+      }
     } finally {
       if (version === revision) cargandoDetalle = false;
     }
@@ -125,10 +130,21 @@
   onMount(() => {
     void sincronizarRuta();
     const manejarHistorial = () => void sincronizarRuta();
+    let reintentando = false;
+    const recuperarDetalle = async () => {
+      if (reintentando || document.hidden || ruta.detalleId === null || (!avisoDetalle && !errorDetalle)) return;
+      reintentando = true;
+      try { await sincronizarRuta(); }
+      finally { reintentando = false; }
+    };
     window.addEventListener("popstate", manejarHistorial);
+    window.addEventListener("online", recuperarDetalle);
+    const intervalo = window.setInterval(() => void recuperarDetalle(), 15_000);
     return () => {
       ++revision;
+      window.clearInterval(intervalo);
       window.removeEventListener("popstate", manejarHistorial);
+      window.removeEventListener("online", recuperarDetalle);
     };
   });
 </script>
@@ -153,14 +169,15 @@
         <Dashboard onVerDetalle={abrirDetalle} />
       {:else if ruta.pagina === "servicios"}
         {#if ruta.detalleId !== null}
-          {#if cargandoDetalle}
+          {#if cargandoDetalle && !servicioSeleccionado}
             <p role="status">Cargando servicio...</p>
-          {:else if errorDetalle}
+          {:else if errorDetalle && !servicioSeleccionado}
             <p role="alert">{errorDetalle}</p>
             <button type="button" onclick={() => navegar("servicios")}
               >← Volver a servicios</button
             >
           {:else if servicioSeleccionado}
+            {#if avisoDetalle}<p class="stale-warning cache-note" role="status">{avisoDetalle}</p>{/if}
             {#key ruta.detalleId}
               <DetalleServicio
                 servicio={servicioSeleccionado}
@@ -182,6 +199,10 @@
 </div>
 
 <style>
+  .cache-note {
+    margin: 0 0 12px;
+  }
+
   .app-shell {
     display: flex;
     min-height: 100vh;

@@ -4,7 +4,13 @@
     import DropdownMenu from "../components/ui/DropdownMenu.svelte";
     import { ArrowLeft, Globe, Activity, AlertTriangle, SlidersHorizontal, ArrowUpDown } from "@lucide/svelte";
     import GraficoLatencia from "../components/GraficoLatencia.svelte";
-    import { obtenerEstadoServicio } from "../api/servicios";
+    import { obtenerEstadoServicio, esEstadoServicio } from "../api/servicios";
+    import { esComprobacion } from "../api/comprobaciones";
+    import { validarIncidentes } from "../api/incidentes";
+    import { leerCopia, guardarCopia, esLista, esPagina, mensajeErrorConsulta } from "../lib/cacheSesion";
+    const esIncidente = (v: unknown): v is Incidente => {
+        try { return validarIncidentes([v]).length === 1; } catch { return false; }
+    };
 
     import type { Servicio, EstadoServicio } from "../types/servicio";
 
@@ -31,14 +37,18 @@
     let estado = $state<EstadoServicio | null>(null);
     let cargando = $state(true);
     let error = $state("");
+    let fechaEstado = $state<string | null>(null);
+    let estadoDesdeCopia = $state(false);
 
     let comprobaciones = $state<Comprobacion[]>([]);
     let cargandoComprobaciones = $state(true);
     let errorComprobaciones = $state("");
+    let graficaDesdeCopia = $state(false);
 
     let incidentes = $state<Incidente[]>([]);
     let cargandoIncidentes = $state(true);
     let errorIncidentes = $state("");
+    let incidentesDesdeCopia = $state(false);
 
     const TAMANO_PAGINA = 10;
     let paginaComprobaciones = $state(1);
@@ -46,6 +56,10 @@
     let historialComprobaciones = $state<Comprobacion[]>([]);
     let cargandoHistorial = $state(true);
     let errorHistorial = $state("");
+    let historialDesdeCopia = $state(false);
+    let fechaHistorial = $state<string | null>(null);
+    let fechaHistorialIncidentes = $state<string | null>(null);
+    let reintentoHistorial = $state(0);
     let totalComprobaciones = $state(0);
     let totalIncidentes = $state(0);
     const paginasComprobaciones = $derived(Math.max(1, Math.ceil(totalComprobaciones / TAMANO_PAGINA)));
@@ -92,6 +106,13 @@
         const orden = ordenComprobaciones;
         const minimo = latenciaMin === "" ? null : Number(latenciaMin);
         const maximo = latenciaMax === "" ? null : Number(latenciaMax);
+        reintentoHistorial;
+        const clave = `detalle.${id}.checks.${JSON.stringify([pagina, codigo, orden, minimo, maximo])}`;
+        const copia = leerCopia(clave, (v): v is { registros: Comprobacion[]; total: number } => esPagina(v, esComprobacion, id));
+        historialComprobaciones = copia?.datos.registros ?? [];
+        totalComprobaciones = copia?.datos.total ?? 0;
+        historialDesdeCopia = copia !== null;
+        fechaHistorial = copia?.sincronizadoEn ?? null;
         const controlador = new AbortController();
         let vigente = true;
         cargandoHistorial = true;
@@ -103,10 +124,14 @@
             if (!vigente) return;
             historialComprobaciones = resultado.registros;
             totalComprobaciones = resultado.total;
+            fechaHistorial = guardarCopia(clave, resultado);
+            historialDesdeCopia = false;
+            errorHistorial = "";
             const ultimaPagina = Math.max(1, Math.ceil(resultado.total / TAMANO_PAGINA));
             if (pagina > ultimaPagina) paginaComprobaciones = ultimaPagina;
         }).catch((e: unknown) => {
             if (!vigente || controlador.signal.aborted) return;
+            historialDesdeCopia = copia !== null;
             errorHistorial = e instanceof Error ? e.message : "No se pudo cargar el historial";
         }).finally(() => {
             if (vigente) cargandoHistorial = false;
@@ -121,6 +146,13 @@
         const orden = ordenIncidentes;
         const desde = desdeIncidentes;
         const hasta = hastaIncidentes;
+        reintentoHistorial;
+        const clave = `detalle.${id}.incidentes.${JSON.stringify([pagina, estadoFiltro, orden, desde, hasta])}`;
+        const copia = leerCopia(clave, (v): v is { registros: Incidente[]; total: number } => esPagina(v, esIncidente, id));
+        incidentes = copia?.datos.registros ?? [];
+        totalIncidentes = copia?.datos.total ?? 0;
+        incidentesDesdeCopia = copia !== null;
+        fechaHistorialIncidentes = copia?.sincronizadoEn ?? null;
         const controlador = new AbortController();
         let vigente = true;
         cargandoIncidentes = true;
@@ -132,10 +164,14 @@
             if (!vigente) return;
             incidentes = resultado.registros;
             totalIncidentes = resultado.total;
+            fechaHistorialIncidentes = guardarCopia(clave, resultado);
+            incidentesDesdeCopia = false;
+            errorIncidentes = "";
             const ultimaPagina = Math.max(1, Math.ceil(resultado.total / TAMANO_PAGINA));
             if (pagina > ultimaPagina) paginaIncidentes = ultimaPagina;
         }).catch((e: unknown) => {
             if (!vigente || controlador.signal.aborted) return;
+            incidentesDesdeCopia = copia !== null;
             errorIncidentes = e instanceof Error ? e.message : "No se pudo cargar el historial de incidentes";
         }).finally(() => {
             if (vigente) cargandoIncidentes = false;
@@ -151,6 +187,12 @@
     $effect(() => {
         const servicioId = servicio.id;
         const cantidad = cantidadGrafica;
+        const clave = `detalle.${servicioId}.grafica.${cantidad}`;
+        const copia = leerCopia(clave, (v): v is Comprobacion[] => esLista(v, (c): c is Comprobacion => esComprobacion(c) && c.servicio_id === servicioId) && v.length <= cantidad);
+        comprobaciones = copia?.datos ?? [];
+        ultimaSincronizacionGrafica = copia?.sincronizadoEn ?? null;
+        graficaDesdeCopia = copia !== null;
+        cargandoComprobaciones = copia === null;
         const controlador = new AbortController();
         let vigente = true;
         let consultando = false;
@@ -164,13 +206,14 @@
                 const datos = await obtenerComprobaciones(servicioId, cantidad, controlador.signal);
                 if (vigente) {
                     comprobaciones = datos;
-                    ultimaSincronizacionGrafica = new Date().toISOString();
+                    ultimaSincronizacionGrafica = guardarCopia(clave, datos);
+                    graficaDesdeCopia = false;
                     errorComprobaciones = "";
                 }
             } catch (e) {
-                if (vigente) {
-                    errorComprobaciones = e instanceof Error
-                        ? e.message : "No se pudo consultar el historial";
+                if (vigente && !controlador.signal.aborted) {
+                    graficaDesdeCopia = copia !== null;
+                    errorComprobaciones = mensajeErrorConsulta(e, "No se pudieron actualizar las latencias");
                 }
             } finally {
                 consultando = false;
@@ -194,6 +237,12 @@
     // El estado operativo se actualiza sin retirar los datos ya mostrados.
     $effect(() => {
         const id = servicio.id;
+        const clave = `detalle.${id}.estado`;
+        const copia = leerCopia(clave, (v): v is EstadoServicio => esEstadoServicio(v) && v.servicio_id === id);
+        estado = copia?.datos ?? null;
+        fechaEstado = copia?.sincronizadoEn ?? null;
+        estadoDesdeCopia = copia !== null;
+        cargando = copia === null;
         const controlador = new AbortController();
         let vigente = true;
         let consultando = false;
@@ -202,10 +251,17 @@
             consultando = true;
             try {
                 const resultado = await obtenerEstadoServicio(id, controlador.signal);
-                if (vigente) { estado = resultado; error = ""; }
+                if (vigente) {
+                    estado = resultado;
+                    fechaEstado = leerCopia(clave, (v): v is EstadoServicio =>
+                        esEstadoServicio(v) && v.servicio_id === id)?.sincronizadoEn ?? new Date().toISOString();
+                    estadoDesdeCopia = false;
+                    error = "";
+                }
             } catch (e) {
                 if (vigente && !controlador.signal.aborted) {
-                    error = e instanceof Error ? e.message : "No se pudo consultar el estado";
+                    estadoDesdeCopia = estado !== null;
+                    error = mensajeErrorConsulta(e, "No se pudo consultar el estado");
                 }
             } finally {
                 consultando = false;
@@ -221,6 +277,18 @@
             controlador.abort();
             window.clearInterval(intervaloEstado);
             document.removeEventListener("visibilitychange", reanudar);
+        };
+    });
+    import { onMount } from "svelte";
+    onMount(() => {
+        const refrescar = () => { if (!document.hidden) reintentoHistorial += 1; };
+        window.addEventListener("online", refrescar);
+        document.addEventListener("visibilitychange", refrescar);
+        const intervaloHistorial = window.setInterval(refrescar, 15_000);
+        return () => {
+            window.removeEventListener("online", refrescar);
+            document.removeEventListener("visibilitychange", refrescar);
+            window.clearInterval(intervaloHistorial);
         };
     });
 </script>
@@ -253,12 +321,15 @@
                     </span>
                 {/if}
             </div>
+            {#if estadoDesdeCopia && error}
+                <p class="stale-warning" role="status">Datos guardados / sin conexión · última sincronización: {fechaEstado ? new Date(fechaEstado).toLocaleString("es-UY") : "desconocida"}.</p>
+            {/if}
             {#if cargando}
                 <p class="message">Consultando estado...</p>
             {:else if error && !estado}
                 <p class="error" role="alert">{error}</p>
             {:else if estado}
-                {#if error}<p class="refresh-warning" role="status">{error}</p>{/if}
+                {#if error && !estadoDesdeCopia}<p class="refresh-warning" role="status">{error}</p>{/if}
                 <div class="status-details">
                     <div>
                         <span class="datum-label">Última comprobación</span>
@@ -293,8 +364,8 @@
             <p class="message">Todavía no hay comprobaciones para graficar.</p>
         {:else}
             {#if errorComprobaciones}
-                <p class="refresh-warning" role="status">
-                    No se pudo actualizar la gráfica. Se muestran los últimos datos recibidos.
+                <p class="stale-warning" role="status">
+                    Datos guardados / sin conexión · última sincronización: {ultimaSincronizacionGrafica ? new Date(ultimaSincronizacionGrafica).toLocaleString("es-UY") : "desconocida"}.
                 </p>
             {/if}
             <GraficoLatencia
@@ -358,7 +429,9 @@
                 <span class="updating" role="status">Actualizando…</span>
             {/if}
         </div>
-        {#if errorHistorial}
+        {#if historialDesdeCopia && errorHistorial}
+            <p class="stale-warning" role="status">Datos guardados / sin conexión · última sincronización: {fechaHistorial ? new Date(fechaHistorial).toLocaleString("es-UY") : "desconocida"}. {errorHistorial}</p>
+        {:else if errorHistorial}
             <p class="panel-warning" role="alert">{errorHistorial}</p>
         {/if}
         {#if cargandoHistorial && historialComprobaciones.length === 0 && !errorHistorial}
@@ -447,7 +520,9 @@
                 <span class="updating" role="status">Actualizando…</span>
             {/if}
         </div>
-        {#if errorIncidentes}
+        {#if incidentesDesdeCopia && errorIncidentes}
+            <p class="stale-warning" role="status">Datos guardados / sin conexión · última sincronización: {fechaHistorialIncidentes ? new Date(fechaHistorialIncidentes).toLocaleString("es-UY") : "desconocida"}. {errorIncidentes}</p>
+        {:else if errorIncidentes}
             <p class="panel-warning" role="alert">{errorIncidentes}</p>
         {/if}
         {#if cargandoIncidentes && incidentes.length === 0 && !errorIncidentes}

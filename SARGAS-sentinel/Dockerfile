@@ -13,7 +13,7 @@ COPY --from=frontend . .
 RUN npm run check && npm run build
 
 # 2. Compilar el backend Go e integrar el frontend.
-FROM golang:1.27.3-alpine AS go-build
+FROM golang:1.27.4-alpine AS go-build
 
 WORKDIR /app
 
@@ -30,6 +30,11 @@ RUN CGO_ENABLED=0 GOOS=linux \
 
 # 3. Imagen final de ejecución.
 FROM alpine:3.22
+
+ARG SARGAS_VERSION=desarrollo
+ARG SARGAS_BUILD_ORIGIN=paquete
+LABEL org.opencontainers.image.version=$SARGAS_VERSION \
+      io.sargas.build.origin=$SARGAS_BUILD_ORIGIN
 
 RUN apk add --no-cache ca-certificates tzdata
 

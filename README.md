@@ -2,13 +2,9 @@
 
 **Plataforma autohospedada de monitoreo de servicios HTTP/HTTPS.**
 
-SARGAS Sentinel es una aplicación de monitoreo que permite supervisar la disponibilidad de servicios web, detectar interrupciones y consultar su comportamiento desde una interfaz centralizada.
+SARGAS Sentinel supervisa la disponibilidad de aplicaciones y APIs, registra tiempos de respuesta y detecta interrupciones. Su interfaz web centraliza la administración de servicios, las métricas y el historial de incidentes.
 
-El sistema ejecuta comprobaciones periódicas, registra tiempos de respuesta, identifica cambios de disponibilidad y conserva un historial de incidentes.
-
-Desarrollado principalmente en **Go**, utiliza una arquitectura modular que separa el motor de monitoreo, la API REST, la persistencia y la interfaz web.
-
-SARGAS busca ofrecer una solución ligera, confiable y extensible, orientada a desarrolladores y pequeños entornos de infraestructura.
+Está orientado a desarrolladores y pequeños entornos de infraestructura.
 
 **Versión:** `v1.2.0` · **Licencia:** MIT
 
@@ -16,80 +12,62 @@ SARGAS busca ofrecer una solución ligera, confiable y extensible, orientada a d
 
 ## Instalación
 
-SARGAS utiliza Docker Compose para simplificar la instalación y ejecución de sus componentes.
-
 ### Requisitos
 
 - Windows 10 u 11.
-- Docker Desktop en ejecución, con contenedores Linux.
-- Docker Compose v2.17 o superior y Docker Buildx.
-- Conexión a Internet durante la primera instalación.
+- Docker Desktop en ejecución, con contenedores Linux, Docker Compose v2.17 o superior y Buildx.
+- Conexión a Internet para descargar imágenes y dependencias.
 
 No es necesario instalar Go, Node.js ni PostgreSQL por separado.
 
 ### Instalación rápida
 
-**1. Descargar el proyecto**
-
-Clonar el repositorio:
-
-```powershell
-git clone https://github.com/Lautaro53/SARGAS-Sentinel.git
-cd SARGAS-Sentinel
-```
-
-También es posible descargar el proyecto desde GitHub mediante **Code → Download ZIP** y extraerlo.
-
-**2. Ejecutar el instalador**
-
-Con Docker Desktop iniciado, abrir PowerShell desde la raíz del proyecto y ejecutar:
+1. Descargar `SARGAS-Sentinel-v1.2.0.zip` desde [GitHub Releases](https://github.com/Lautaro53/SARGAS-Sentinel/releases) y extraerlo completo.
+2. Abrir PowerShell en la carpeta extraída y ejecutar:
 
 ```powershell
-.\instalar.cmd
+.\sargas-instalar.cmd instalar
 ```
 
-El instalador verifica las dependencias, prepara las credenciales, construye la aplicación e inicia los servicios.
+3. Acceder a la dirección indicada al finalizar la instalación (por defecto, [http://127.0.0.1:8080/](http://127.0.0.1:8080/)). Si el puerto está ocupado, se selecciona otro disponible entre 8080 y 8090.
 
-**3. Acceder a SARGAS**
-
-Al finalizar, se mostrará la dirección de acceso:
-
-```text
-SARGAS Sentinel instalado y disponible.
-Abrir: http://127.0.0.1:8080/
-```
-
-El puerto predeterminado es `8080`. Si está ocupado durante una instalación nueva, SARGAS busca automáticamente otro disponible y muestra la dirección correspondiente. Las instalaciones existentes conservan su configuración de puerto cuando es posible.
+El instalador está destinado a instalaciones nuevas. Para una instalación existente, utilizar los comandos de administración o actualización.
 
 ### Administración
 
-Los siguientes comandos se ejecutan desde la carpeta principal del proyecto:
+Con Docker Desktop iniciado, ejecutar desde la raíz del paquete:
 
 | Acción | Comando |
 |---|---|
-| Instalar o reconstruir | `.\instalar.cmd` |
-| Consultar estado | `.\administrar.cmd estado` |
-| Consultar registros | `.\administrar.cmd logs` |
-| Detener servicios | `.\administrar.cmd detener` |
+| Iniciar | `.\sargas-docker.cmd iniciar` |
+| Detener | `.\sargas-docker.cmd detener` |
+| Reiniciar | `.\sargas-docker.cmd reiniciar` |
+| Consultar estado | `.\sargas-docker.cmd estado` |
+| Consultar registros de Sentinel | `.\sargas-docker.cmd logs` |
+| Consultar versión instalada | `.\sargas-docker.cmd version` |
 
-Los datos de PostgreSQL se conservan en un volumen persistente. Las credenciales se almacenan fuera del repositorio.
+Todos los scripts muestran la ayuda al ejecutarlos sin argumentos o con `ayuda`. Los datos y el puerto de la instalación se conservan al iniciar, detener o reiniciar.
 
-### Operaciones de desarrollo 
+### Actualizaciones
 
-Los siguientes comandos permiten compilar, ejecutar y administrar SARGAS Sentinel desde la raíz del repositorio.
+```powershell
+.\sargas-actualizar.cmd buscar
+.\sargas-actualizar.cmd actualizar -Confirmar
+```
 
-| Operación local | Comando desde la raíz |
-|---|---|
-| Ver acciones disponibles | `.\sargas.ps1 ayuda` |
-| Compilar frontend y backend | `.\sargas.ps1 compilar` |
-| Iniciar el ejecutable instalado | `.\sargas.ps1 iniciar` |
-| Instalar el ejecutable ya compilado, con respaldo | `.\sargas.ps1 actualizar` |
-| Compilar e instalar, con respaldo | `.\sargas.ps1 actualizar -Compilar` |
-| Validar una candidata a release | `.\sargas.ps1 validar` |
-| Consultar contenedores y registros | `.\sargas.ps1 docker-estado` / `.\sargas.ps1 docker-logs` |
-| Consultar cambios y commits locales | `.\sargas.ps1 git-estado` |
+El actualizador instala releases estables compatibles, verifica el paquete descargado y respalda PostgreSQL antes de sustituir Sentinel. Conserva el volumen, las credenciales y el puerto existentes.
 
-> **Seguridad:** SARGAS está diseñado para uso local o en entornos de confianza. La versión actual no incluye autenticación de usuarios y no debe exponerse directamente a Internet.
+Para instalaciones anteriores a v1.2.0, descargar primero el nuevo paquete y ejecutar sus comandos, sin utilizar el instalador. Si la versión instalada es desconocida y se ha comprobado que corresponde a una instalación anterior compatible de SARGAS, la adopción de v1.2.0 requiere:
+
+```powershell
+.\sargas-actualizar.cmd actualizar -Confirmar -AceptarVersionDesconocida
+```
+
+Después de actualizar, utilizar los scripts de la carpeta indicada por el actualizador. Conservar la carpeta de instalación original, los respaldos y las credenciales privadas. No ejecutar simultáneamente operaciones de instalación, administración o actualización.
+
+Consultar [Respaldo y recuperación](docs/recuperacion.md) para conocer el procedimiento y sus limitaciones.
+
+> **Seguridad:** SARGAS está diseñado para uso local. No incluye autenticación de usuarios y no debe exponerse directamente a Internet.
 
 ---
 
@@ -134,9 +112,12 @@ La interfaz permite consultar:
 - Dashboard general de monitoreo.
 - Listado y administración de servicios.
 - Estados de disponibilidad.
-- Gráficos de latencia.
+- Gráficos interactivos de latencia con actualización automática.
 - Historial de comprobaciones.
 - Incidentes activos y finalizados.
+- Temas claro y oscuro, búsqueda, filtros y tablas paginadas.
+
+Si la API deja de responder, las vistas pueden mostrar los datos disponibles en la caché de sesión, indicando que están desactualizados y la última sincronización. Las operaciones administrativas requieren conexión.
 
 ### Persistencia
 
@@ -146,63 +127,28 @@ La información se almacena en PostgreSQL. Después de reiniciar la aplicación,
 
 ## Arquitectura e infraestructura
 
-SARGAS utiliza una arquitectura modular que separa las responsabilidades de presentación, monitoreo, comunicación y persistencia.
-
-### Tecnologías
-
 | Componente | Tecnología |
 |---|---|
-| Backend y motor de monitoreo | Go 1.27.3 |
-| Frontend | Svelte 5 + TypeScript |
-| Compilación frontend | Vite |
+| Backend, API REST y monitor concurrente | Go |
+| Interfaz web | Svelte 5, TypeScript y Vite |
 | Base de datos | PostgreSQL 18 |
-| Contenedorización | Docker |
-| Despliegue local | Docker Compose |
-| Instalación Windows | PowerShell |
+| Despliegue | Docker Compose |
 
-### Funcionamiento
+Docker ejecuta dos servicios: `sentinel` (backend e interfaz web integrada) y `postgres` (persistencia). La API y la web se sirven desde un único puerto local. PostgreSQL se comunica por la red interna de Docker, sin publicar su puerto en el anfitrión.
 
-El frontend se comunica con el backend mediante una API REST.
+La API REST está disponible bajo `/api`. Los servicios, comprobaciones, estados e incidentes se almacenan en PostgreSQL. Las consultas históricas admiten paginación.
 
-El backend administra los servicios y coordina el motor de monitoreo, que utiliza goroutines para realizar comprobaciones concurrentes.
+## Desarrollo
 
-Los resultados se almacenan en PostgreSQL y permiten evaluar cambios de disponibilidad, registrar incidentes y consultar información histórica.
+El desarrollo nativo utiliza herramientas y bases de datos independientes de Docker. Desde la raíz del repositorio:
 
-### Infraestructura Docker
+```powershell
+.\sargas-dev.ps1 ayuda
+.\sargas-dev.ps1 configurar
+.\sargas-dev.ps1 dev
+```
 
-La distribución utiliza dos servicios:
-
-| Servicio | Responsabilidad |
-|---|---|
-| `sentinel` | Backend Go, API REST e interfaz web |
-| `postgres` | Persistencia de configuraciones y resultados |
-
-Durante la compilación, Svelte genera los archivos estáticos de la interfaz, que se incorporan al ejecutable Go mediante `go:embed`.
-
-Esto permite servir la interfaz y la API desde un único proceso, sin necesitar un servidor Node.js independiente en ejecución.
-
-PostgreSQL se comunica con Sentinel mediante la red interna de Docker. Su puerto no se publica en el equipo anfitrión.
-
-La aplicación se publica únicamente sobre la interfaz local `127.0.0.1`, utilizando el puerto configurado durante la instalación.
-
-### Base de datos
-
-El esquema principal se organiza en cuatro tablas:
-
-| Tabla | Responsabilidad |
-|---|---|
-| `servicios` | Configuración y administración |
-| `comprobaciones` | Resultados HTTP, errores y latencias |
-| `estados_servicio` | Disponibilidad y contadores |
-| `incidentes` | Interrupciones y recuperaciones |
-
-Las operaciones de evaluación utilizan transacciones para mantener la consistencia de la información.
-
-### API REST
-
-La API se encuentra disponible bajo `/api` y permite administrar servicios y consultar estados, comprobaciones e incidentes.
-
-Las consultas históricas admiten paginación mediante `limite` y `offset`.
+Consultar la [guía de desarrollo](docs/desarrollo.md) para requisitos, comandos de compilación y validación.
 
 ---
 
@@ -214,7 +160,7 @@ SARGAS Sentinel sigue un desarrollo incremental, incorporando nuevas capacidades
 |---|---|---|
 | **v1.0.0** | Primera versión pública | Monitoreo HTTP/HTTPS, API REST, PostgreSQL, incidentes e instalación Docker |
 | **v1.1.5** | Interfaz y consolidación | Renovación visual, mejoras de administración y gestión de instalación |
-| **v1.2** | Datos y visualización | Caché, actualización de información y gráficos |
+| **v1.2.0** | Interfaz, datos y mantenimiento | Renovación visual, caché de sesión, gráficos dinámicos y actualizaciones Docker |
 | **v1.3** | Administración y actividad | Configuración ampliada y registro de eventos |
 | **v1.4** | Notificaciones | Webhooks y correo electrónico |
 | **v1.5** | Ampliación del monitoreo | Comprobaciones TCP, exportación y consolidación |

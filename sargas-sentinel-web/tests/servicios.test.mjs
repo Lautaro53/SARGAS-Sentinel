@@ -1,21 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
-import ts from 'typescript'
-
-const fuente = await readFile(new URL('../src/api/servicios.ts', import.meta.url), 'utf8')
-const modulo = ts.transpileModule(fuente, {
-  compilerOptions: {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext
-  }
-}).outputText
-const {
-  obtenerServicios,
-  obtenerEstadoServicio,
-  crearServicio,
-  actualizarServicio
-} = await import(`data:text/javascript;base64,${Buffer.from(modulo).toString('base64')}`)
+import {
+  obtenerServicios, obtenerEstadoServicio, crearServicio, actualizarServicio, leerServiciosGuardados
+} from '../src/api/servicios.ts'
 
 // Pruebas aisladas: no hacen solicitudes reales ni acceden a PostgreSQL.
 const base = {
@@ -42,6 +29,59 @@ function responder(objeto, status = 200) {
 function simular(t, fetchSimulado) {
   t.mock.method(globalThis, 'fetch', fetchSimulado)
 }
+
+function almacenamiento() {
+  const valores = new Map();
+  return {
+    get length() { return valores.size; },
+    key(i) { return [...valores.keys()][i] ?? null; },
+    getItem(k) { return valores.get(k) ?? null; },
+    setItem(k,v) { valores.set(k,String(v)); },
+    removeItem(k) { valores.delete(k); }
+  };
+}
+
+test('Compartir una copia conserva su fecha original', async () => {
+  globalThis.sessionStorage = almacenamiento();
+  const { guardarCopia } = await import('../src/lib/cacheSesion.ts');
+  const fecha = new Date(Date.now() - 60_000).toISOString();
+  guardarCopia('servicios', [base], fecha);
+  assert.equal(leerServiciosGuardados()?.sincronizadoEn, fecha);
+});
+
+test('Dashboard y Servicios comparten la última lista validada', async (t) => {
+  globalThis.sessionStorage = almacenamiento();
+  simular(t, async () => responder([base]));
+  await obtenerServicios();
+  assert.deepEqual(leerServiciosGuardados()?.datos, [base]);
+});
+
+test('Si la API falla se conserva la copia compartida previa', async (t) => {
+  globalThis.sessionStorage = almacenamiento();
+  simular(t, async () => { throw new TypeError('Failed to fetch'); });
+  const previo = {
+    version: 2,
+    sincronizadoEn: new Date(Date.now() - 60_000).toISOString(),
+    datos: [base]
+  };
+  sessionStorage.setItem('sargas.cache.v2.servicios', JSON.stringify(previo));
+  await assert.rejects(obtenerServicios());
+  assert.equal(leerServiciosGuardados()?.sincronizadoEn, previo.sincronizadoEn);
+});
+
+test('Estado validado en Dashboard queda disponible para Detalle', async (t) => {
+  globalThis.sessionStorage = almacenamiento();
+  const estado = {
+    servicio_id: base.id, estado: 'UP', habilitado: true,
+    exitos_consecutivos: 2, fallos_consecutivos: 0,
+    ultima_comprobacion_en: null
+  };
+  simular(t, async () => responder(estado));
+  await obtenerEstadoServicio(base.id);
+  const { leerCopia } = await import('../src/lib/cacheSesion.ts');
+  const copia = leerCopia(`detalle.${base.id}.estado`, v => v?.servicio_id === base.id);
+  assert.deepEqual(copia?.datos, estado);
+});
 
 test('GET servicios: lista válida', async (t) => {
   simular(t, async (ruta) => {

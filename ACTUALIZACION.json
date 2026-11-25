@@ -1,0 +1,7 @@
+{
+  "version": "v1.2.0",
+  "contrato": "docker-v1-schema-v1",
+  "migraciones": false,
+  "desde": ["v1.1.6", "v1.2.0"],
+  "admiteLegacy": true
+}
