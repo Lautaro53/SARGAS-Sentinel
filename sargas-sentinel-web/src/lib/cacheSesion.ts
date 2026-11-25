@@ -1,4 +1,3 @@
-// Caché de sesión versionada. 
 const PREFIJO = "sargas.cache.v2.";
 const VERSION = 2;
 const EDAD_MAXIMA_MS = 24 * 60 * 60 * 1000;
